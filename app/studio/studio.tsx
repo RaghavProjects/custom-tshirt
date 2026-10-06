@@ -1,0 +1,336 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import { useEffect, useRef, useState } from "react";
+import {
+  makeImageElement,
+  makeTextElement,
+  TEXT_COLORS,
+  TEXT_FONTS,
+  type DesignElement,
+  type DesignState,
+  type PrintArea,
+  type Side,
+} from "@/lib/design";
+import type { ArtworkRules } from "@/lib/settings";
+
+const Canvas = dynamic(() => import("./canvas"), {
+  ssr: false,
+  loading: () => (
+    <div className="grid h-[600px] place-items-center rounded-2xl border border-line bg-white text-muted">
+      Loading canvas…
+    </div>
+  ),
+});
+
+const STAGE_W = 520;
+const STAGE_H = 600;
+
+type StudioProps = {
+  productName: string;
+  size: string;
+  shirtColor: string;
+  printArea: PrintArea;
+  printAreaIsPlaceholder: boolean;
+  artworkRules: ArtworkRules;
+};
+
+export default function Studio({
+  productName,
+  size,
+  shirtColor,
+  printArea,
+  printAreaIsPlaceholder,
+  artworkRules,
+}: StudioProps) {
+  const [side, setSide] = useState<Side>("front");
+  const [design, setDesign] = useState<DesignState>({ front: [], back: [] });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [avail, setAvail] = useState(STAGE_W);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setAvail(el.clientWidth));
+    ro.observe(el);
+    setAvail(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  const scale = Math.min(1, avail / STAGE_W);
+  const elements = design[side];
+  const selected = elements.find((e) => e.id === selectedId) ?? null;
+
+  function updateElement(id: string, attrs: Partial<DesignElement>) {
+    setDesign((prev) => ({
+      ...prev,
+      [side]: prev[side].map((e) =>
+        e.id === id ? ({ ...e, ...attrs } as DesignElement) : e,
+      ),
+    }));
+  }
+
+  function addText() {
+    const el = makeTextElement({
+      x: printArea.x + printArea.width * 0.2,
+      y: printArea.y + printArea.height * 0.4,
+    });
+    setDesign((prev) => ({ ...prev, [side]: [...prev[side], el] }));
+    setSelectedId(el.id);
+  }
+
+  function removeSelected() {
+    if (!selectedId) return;
+    setDesign((prev) => ({
+      ...prev,
+      [side]: prev[side].filter((e) => e.id !== selectedId),
+    }));
+    setSelectedId(null);
+  }
+
+  async function onUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setError(null);
+    setBusy(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body });
+      const json = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !json.url) {
+        setError(json.error ?? "Upload failed.");
+        return;
+      }
+
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      img.src = json.url;
+      await img.decode().catch(() => undefined);
+
+      const natW = img.naturalWidth || 120;
+      const natH = img.naturalHeight || 120;
+      const maxW = printArea.width * 0.5;
+      const maxH = printArea.height * 0.5;
+      const ratio = Math.min(maxW / natW, maxH / natH, 1);
+
+      const el = makeImageElement({
+        url: json.url,
+        x: printArea.x + printArea.width * 0.25,
+        y: printArea.y + printArea.height * 0.25,
+        width: Math.round(natW * ratio),
+        height: Math.round(natH * ratio),
+      });
+      setDesign((prev) => ({ ...prev, [side]: [...prev[side], el] }));
+      setSelectedId(el.id);
+    } catch {
+      setError("Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-full border border-line bg-white p-1">
+          {(["front", "back"] as Side[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              data-testid={`side-${s}`}
+              aria-pressed={side === s}
+              onClick={() => {
+                setSide(s);
+                setSelectedId(null);
+              }}
+              className={`h-9 rounded-full px-5 text-sm capitalize ${
+                side === s ? "bg-accent text-white" : "text-muted"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          data-testid="add-text"
+          onClick={addText}
+          className="h-11 rounded-full bg-accent px-6 text-sm font-medium text-white"
+        >
+          Add text
+        </button>
+
+        <label
+          aria-busy={busy}
+          className={`inline-flex h-11 cursor-pointer items-center rounded-full border border-line bg-white px-6 text-sm font-medium ${
+            busy ? "pointer-events-none opacity-60" : ""
+          }`}
+        >
+          {busy ? "Uploading…" : "Upload artwork"}
+          <input
+            type="file"
+            accept={artworkRules.acceptedTypes.join(",")}
+            data-testid="upload-input"
+            onChange={onUpload}
+            className="sr-only"
+          />
+        </label>
+
+        {selectedId && (
+          <button
+            type="button"
+            data-testid="remove-element"
+            onClick={removeSelected}
+            className="h-11 rounded-full border border-line bg-white px-6 text-sm text-muted"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
+      {selected?.kind === "text" && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white p-4">
+          <label className="flex flex-col gap-1 text-xs text-muted">
+            Text
+            <input
+              data-testid="text-content"
+              value={selected.content}
+              onChange={(e) =>
+                updateElement(selected.id, { content: e.target.value })
+              }
+              className="h-10 w-56 rounded-lg border border-line px-3 text-sm text-fg"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-muted">
+            Font
+            <select
+              data-testid="text-font"
+              value={selected.fontFamily}
+              onChange={(e) =>
+                updateElement(selected.id, { fontFamily: e.target.value })
+              }
+              className="h-10 rounded-lg border border-line px-3 text-sm text-fg"
+            >
+              {TEXT_FONTS.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-muted">
+            Size
+            <input
+              type="number"
+              min={10}
+              max={120}
+              data-testid="text-size"
+              value={selected.fontSize}
+              onChange={(e) =>
+                updateElement(selected.id, {
+                  fontSize: Number(e.target.value) || 10,
+                })
+              }
+              className="h-10 w-20 rounded-lg border border-line px-3 text-sm text-fg"
+            />
+          </label>
+          <div className="flex flex-col gap-1 text-xs text-muted">
+            Colour
+            <div className="flex gap-2">
+              {TEXT_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-label={`Text colour ${c}`}
+                  aria-pressed={selected.fill === c}
+                  onClick={() => updateElement(selected.id, { fill: c })}
+                  className={`h-8 w-8 rounded-full border-2 ${
+                    selected.fill === c ? "border-accent" : "border-line"
+                  }`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p
+          data-testid="studio-error"
+          className="rounded-lg bg-white px-4 py-3 text-sm text-accent"
+        >
+          {error}
+        </p>
+      )}
+
+      <div ref={wrapRef} className="w-full">
+        <div
+          style={{ width: STAGE_W * scale, height: STAGE_H * scale }}
+          className="mx-auto"
+        >
+          <div
+            style={{
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              width: STAGE_W,
+              height: STAGE_H,
+            }}
+          >
+            <Canvas
+              width={STAGE_W}
+              height={STAGE_H}
+              shirtColor={shirtColor}
+              printArea={printArea}
+              elements={elements}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onChange={updateElement}
+            />
+          </div>
+        </div>
+      </div>
+
+      {printAreaIsPlaceholder && (
+        <p className="text-xs text-muted">
+          Print area and artwork limits are placeholders until Shankar supplies
+          them.
+        </p>
+      )}
+
+      <section
+        aria-label="Design elements"
+        className="rounded-2xl border border-line bg-white p-4"
+      >
+        <h2 className="font-display text-lg">
+          {side} · {productName} · size {size}
+        </h2>
+        {elements.length === 0 ? (
+          <p className="mt-2 text-sm text-muted">
+            Nothing on the {side} yet. Add text or upload artwork.
+          </p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-1 text-sm">
+            {elements.map((el) => (
+              <li key={el.id} data-testid={`element-${el.id}`}>
+                {el.kind === "text" ? `Text: ${el.content}` : "Artwork"}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <pre data-testid="design-json" className="sr-only">
+        {JSON.stringify(design)}
+      </pre>
+    </div>
+  );
+}
