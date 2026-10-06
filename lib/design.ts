@@ -116,3 +116,70 @@ export function clampBoxTopLeft(
 
   return { x, y };
 }
+
+const EMPTY_DESIGN: DesignState = { front: [], back: [] };
+
+function isNumber(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+
+function isValidElement(value: unknown): value is DesignElement {
+  if (typeof value !== "object" || value === null) return false;
+  const e = value as Record<string, unknown>;
+  if (typeof e.id !== "string" || e.id.length === 0) return false;
+  if (!isNumber(e.x) || !isNumber(e.y)) return false;
+  if (!isNumber(e.scaleX) || !isNumber(e.scaleY) || !isNumber(e.rotation)) {
+    return false;
+  }
+  if (e.kind === "text") {
+    return (
+      typeof e.content === "string" &&
+      typeof e.fontFamily === "string" &&
+      typeof e.fill === "string" &&
+      isNumber(e.fontSize)
+    );
+  }
+  if (e.kind === "image") {
+    return typeof e.url === "string" && isNumber(e.width) && isNumber(e.height);
+  }
+  return false;
+}
+
+function isValidState(value: unknown): value is DesignState {
+  if (typeof value !== "object" || value === null) return false;
+  const s = value as Record<string, unknown>;
+  return (
+    Array.isArray(s.front) &&
+    Array.isArray(s.back) &&
+    s.front.every(isValidElement) &&
+    s.back.every(isValidElement)
+  );
+}
+
+/** Structured JSON for storage with an order (PRD §10). */
+export function serializeDesign(state: DesignState): string {
+  return JSON.stringify(state);
+}
+
+/** Parse stored JSON, returning an empty design rather than throwing on bad data. */
+export function deserializeDesign(raw: string | null): DesignState {
+  if (!raw) return EMPTY_DESIGN;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!isValidState(parsed)) return EMPTY_DESIGN;
+    return { front: parsed.front, back: parsed.back };
+  } catch {
+    return EMPTY_DESIGN;
+  }
+}
+
+/** Relative luminance 0..1 of a hex colour, for choosing a blend mode. */
+export function luminance(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return 1;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}

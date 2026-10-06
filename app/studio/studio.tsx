@@ -3,8 +3,10 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import {
+  deserializeDesign,
   makeImageElement,
   makeTextElement,
+  serializeDesign,
   TEXT_COLORS,
   TEXT_FONTS,
   type DesignElement,
@@ -12,6 +14,7 @@ import {
   type PrintArea,
   type Side,
 } from "@/lib/design";
+import type { ColorOption } from "@/lib/types";
 import type { ArtworkRules } from "@/lib/settings";
 
 const Canvas = dynamic(() => import("./canvas"), {
@@ -27,30 +30,54 @@ const STAGE_W = 520;
 const STAGE_H = 600;
 
 type StudioProps = {
+  productId: string;
   productName: string;
-  size: string;
-  shirtColor: string;
+  colors: ColorOption[];
+  sizes: string[];
+  initialColor: string;
+  initialSize: string;
   printArea: PrintArea;
   printAreaIsPlaceholder: boolean;
   artworkRules: ArtworkRules;
 };
 
 export default function Studio({
+  productId,
   productName,
-  size,
-  shirtColor,
+  colors,
+  sizes,
+  initialColor,
+  initialSize,
   printArea,
   printAreaIsPlaceholder,
   artworkRules,
 }: StudioProps) {
   const [side, setSide] = useState<Side>("front");
+  const [colorHex, setColorHex] = useState(initialColor);
+  const [size, setSize] = useState(initialSize);
   const [design, setDesign] = useState<DesignState>({ front: [], back: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const [avail, setAvail] = useState(STAGE_W);
+
+  const storageKey = `sg-design-${productId}`;
+
+  // Restore a saved design once on mount, then persist on every change.
+  useEffect(() => {
+    // Reading an external store (localStorage) on mount is intentional here;
+    // the design is client-only state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDesign(deserializeDesign(localStorage.getItem(storageKey)));
+    setReady(true);
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (ready) localStorage.setItem(storageKey, serializeDesign(design));
+  }, [design, ready, storageKey]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -64,6 +91,7 @@ export default function Studio({
   const scale = Math.min(1, avail / STAGE_W);
   const elements = design[side];
   const selected = elements.find((e) => e.id === selectedId) ?? null;
+  const color = colors.find((c) => c.hex === colorHex) ?? null;
 
   function updateElement(id: string, attrs: Partial<DesignElement>) {
     setDesign((prev) => ({
@@ -138,6 +166,51 @@ export default function Studio({
 
   return (
     <div className="flex flex-col gap-8">
+      <section className="flex flex-wrap items-center gap-x-8 gap-y-4 rounded-2xl border border-line bg-white p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wide text-muted">
+            Colour
+          </span>
+          {colors.map((c) => (
+            <button
+              key={c.hex}
+              type="button"
+              data-testid={`studio-color-${c.hex}`}
+              aria-label={c.name}
+              aria-pressed={c.hex === colorHex}
+              onClick={() => setColorHex(c.hex)}
+              className={`flex h-9 w-9 items-center justify-center rounded-full border-2 ${
+                c.hex === colorHex ? "border-accent" : "border-line"
+              }`}
+            >
+              <span
+                className="h-6 w-6 rounded-full border border-line"
+                style={{ backgroundColor: c.hex }}
+              />
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wide text-muted">Size</span>
+          {sizes.map((s) => (
+            <button
+              key={s}
+              type="button"
+              data-testid={`studio-size-${s}`}
+              aria-pressed={s === size}
+              onClick={() => setSize(s)}
+              className={`h-9 min-w-9 rounded-lg border px-3 text-sm ${
+                s === size
+                  ? "border-accent bg-accent text-white"
+                  : "border-line"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <div className="flex flex-wrap items-center gap-3">
         <div className="inline-flex rounded-full border border-line bg-white p-1">
           {(["front", "back"] as Side[]).map((s) => (
@@ -288,7 +361,7 @@ export default function Studio({
             <Canvas
               width={STAGE_W}
               height={STAGE_H}
-              shirtColor={shirtColor}
+              shirtColor={colorHex}
               printArea={printArea}
               elements={elements}
               selectedId={selectedId}
@@ -311,7 +384,7 @@ export default function Studio({
         className="rounded-2xl border border-line bg-white p-4"
       >
         <h2 className="font-display text-lg">
-          {side} · {productName} · size {size}
+          {side} · {productName} · {color?.name ?? colorHex} · size {size}
         </h2>
         {elements.length === 0 ? (
           <p className="mt-2 text-sm text-muted">

@@ -55,9 +55,12 @@ export default async function StudioPage({
 
       <div className="mt-10">
         <Studio
+          productId={product.id}
           productName={product.name}
-          size={size}
-          shirtColor={color.hex}
+          colors={product.colors}
+          sizes={product.sizes}
+          initialColor={color.hex}
+          initialSize={size}
           printArea={settings.printArea}
           printAreaIsPlaceholder={settings.printAreaIsPlaceholder}
           artworkRules={settings.artworkRules}

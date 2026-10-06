@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   clampBoxTopLeft,
+  deserializeDesign,
   isBoxInsideArea,
+  luminance,
   makeTextElement,
+  serializeDesign,
+  type DesignState,
   type PrintArea,
 } from "./design";
 
@@ -57,5 +61,39 @@ describe("makeTextElement", () => {
     expect(el.x).toBe(10);
     expect(el.fontSize).toBeGreaterThan(0);
     expect(el.id).toMatch(/[0-9a-f-]{36}/);
+  });
+});
+
+describe("serializeDesign / deserializeDesign", () => {
+  const state: DesignState = {
+    front: [makeTextElement({ x: 5, y: 5, content: "Hello" })],
+    back: [],
+  };
+
+  it("round-trips a design without changing it", () => {
+    expect(deserializeDesign(serializeDesign(state))).toEqual(state);
+  });
+
+  it("returns an empty design for null input", () => {
+    expect(deserializeDesign(null)).toEqual({ front: [], back: [] });
+  });
+
+  it("returns an empty design for malformed JSON", () => {
+    expect(deserializeDesign("{not json")).toEqual({ front: [], back: [] });
+  });
+
+  it("rejects a design containing an invalid element", () => {
+    const bad = JSON.stringify({
+      front: [{ kind: "text", x: 1 }],
+      back: [],
+    });
+    expect(deserializeDesign(bad)).toEqual({ front: [], back: [] });
+  });
+});
+
+describe("luminance", () => {
+  it("reads white as light and black as dark", () => {
+    expect(luminance("#ffffff")).toBeGreaterThan(0.5);
+    expect(luminance("#000000")).toBeLessThan(0.5);
   });
 });

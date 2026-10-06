@@ -70,3 +70,36 @@ test("a PNG upload is accepted and stored", async ({ request }) => {
   const body = (await res.json()) as { url: string };
   expect(body.url).toContain("/artwork/uploads/");
 });
+
+test("changing colour and size never loses the design", async ({
+  page,
+}, testInfo) => {
+  await toStudio(page);
+  await page.getByTestId("add-text").click();
+  const before = await design(page);
+
+  await page.getByTestId("studio-color-#FFFFFF").click();
+  await page.getByTestId("studio-size-L").click();
+
+  await page.screenshot({
+    path: `test-results/evidence/studio-blend-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+
+  const after = await design(page);
+  expect(after).toEqual(before);
+  await expect(page.getByText("Text: Your text")).toBeVisible();
+});
+
+test("a saved design survives a reload", async ({ page }) => {
+  await toStudio(page);
+  await page.getByTestId("add-text").click();
+  const before = await design(page);
+  expect(before.front).toHaveLength(1);
+
+  await page.reload();
+  await expect(page.getByTestId("studio-heading")).toBeVisible();
+  await expect(page.getByText("Text: Your text")).toBeVisible();
+  const after = await design(page);
+  expect(after.front).toHaveLength(1);
+});

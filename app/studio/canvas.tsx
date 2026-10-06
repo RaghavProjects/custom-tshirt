@@ -11,7 +11,7 @@ import {
   Transformer,
 } from "react-konva";
 import useImage from "use-image";
-import type { DesignElement, PrintArea } from "@/lib/design";
+import { luminance, type DesignElement, type PrintArea } from "@/lib/design";
 
 type CanvasProps = {
   width: number;
@@ -23,18 +23,6 @@ type CanvasProps = {
   onSelect: (id: string | null) => void;
   onChange: (id: string, attrs: Partial<DesignElement>) => void;
 };
-
-/** Pick a print-area line that stays visible on light and dark shirts. */
-function printAreaStroke(hex: string): string {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return "rgba(0,0,0,0.35)";
-  const n = parseInt(m[1], 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.5 ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.55)";
-}
 
 /** Nudge a node back inside the print area, whatever its rotation/scale. */
 function clampNodeToArea(node: Konva.Node, area: PrintArea) {
@@ -55,14 +43,12 @@ function clampNodeToArea(node: Konva.Node, area: PrintArea) {
 
 function ArtImage({
   el,
-  isSelected,
   register,
   onSelect,
   onChange,
   printArea,
 }: {
   el: Extract<DesignElement, { kind: "image" }>;
-  isSelected: boolean;
   register: (id: string, node: Konva.Node | null) => void;
   onSelect: (id: string | null) => void;
   onChange: (id: string, attrs: Partial<DesignElement>) => void;
@@ -100,7 +86,6 @@ function ArtImage({
           rotation: node.rotation(),
         });
       }}
-      strokeEnabled={isSelected}
     />
   );
 }
@@ -131,6 +116,12 @@ export default function Canvas({
     tr.getLayer()?.batchDraw();
   }, [selectedId, elements]);
 
+  // On a light shirt, multiply lets the fabric colour show through the ink
+  // (a printed look). On a dark shirt, ink sits on top, as it must.
+  const light = luminance(shirtColor) > 0.5;
+  const inkBlend: GlobalCompositeOperation = light ? "multiply" : "source-over";
+  const guideStroke = light ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.5)";
+
   return (
     <Stage
       width={width}
@@ -139,6 +130,7 @@ export default function Canvas({
         if (e.target === e.target.getStage()) onSelect(null);
       }}
     >
+      {/* Fabric: base colour plus soft shading so it is not a flat slab. */}
       <Layer>
         <Rect
           x={0}
@@ -149,18 +141,29 @@ export default function Canvas({
           cornerRadius={24}
         />
         <Rect
-          x={printArea.x}
-          y={printArea.y}
-          width={printArea.width}
-          height={printArea.height}
-          stroke={printAreaStroke(shirtColor)}
-          dash={[8, 6]}
-          strokeWidth={1}
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          cornerRadius={24}
           listening={false}
+          fillRadialGradientStartPoint={{ x: width * 0.5, y: height * 0.32 }}
+          fillRadialGradientStartRadius={40}
+          fillRadialGradientEndPoint={{ x: width * 0.5, y: height * 0.5 }}
+          fillRadialGradientEndRadius={width * 0.8}
+          fillRadialGradientColorStops={[
+            0,
+            "rgba(255,255,255,0.16)",
+            0.45,
+            "rgba(255,255,255,0)",
+            1,
+            "rgba(0,0,0,0.26)",
+          ]}
         />
       </Layer>
 
-      <Layer>
+      {/* Design layer, blended onto the fabric. */}
+      <Layer globalCompositeOperation={inkBlend}>
         {elements.map((el) =>
           el.kind === "text" ? (
             <Text
@@ -199,7 +202,6 @@ export default function Canvas({
             <ArtImage
               key={el.id}
               el={el}
-              isSelected={selectedId === el.id}
               register={register}
               onSelect={onSelect}
               onChange={onChange}
@@ -207,6 +209,20 @@ export default function Canvas({
             />
           ),
         )}
+      </Layer>
+
+      {/* Guides and handles stay unblended so they remain visible. */}
+      <Layer>
+        <Rect
+          x={printArea.x}
+          y={printArea.y}
+          width={printArea.width}
+          height={printArea.height}
+          stroke={guideStroke}
+          dash={[8, 6]}
+          strokeWidth={1}
+          listening={false}
+        />
         <Transformer
           ref={trRef}
           rotateEnabled
