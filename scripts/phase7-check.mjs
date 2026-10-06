@@ -168,15 +168,17 @@ try {
     `status=${skip.status}`,
   );
 
-  // every move is logged
+  // every move is logged: the payment event plus the three admin steps
   const { data: events } = await admin
     .from("order_status_events")
     .select("from_state,to_state,actor")
     .eq("order_id", orderId);
+  const adminMoves = (events ?? []).filter((e) => e.actor === ADMIN_EMAIL);
+  const paidEvent = (events ?? []).find((e) => e.to_state === "paid");
   check(
-    "all three moves are logged with an actor",
-    events?.length === 3 && events.every((e) => e.actor === ADMIN_EMAIL),
-    `events=${events?.length}`,
+    "every move is logged (payment + three admin steps, with an actor)",
+    events?.length === 4 && adminMoves.length === 3 && Boolean(paidEvent),
+    `events=${events?.length} adminMoves=${adminMoves.length}`,
   );
 
   // design file download with the admin cookie
