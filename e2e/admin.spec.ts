@@ -31,3 +31,12 @@ test("the admin design download rejects an unauthenticated caller", async ({
   );
   expect(res.status()).toBe(401);
 });
+
+test("the print-file download rejects an unauthenticated caller", async ({
+  request,
+}) => {
+  const res = await request.get(
+    "/api/admin/orders/00000000-0000-0000-0000-000000000000/print?format=png",
+  );
+  expect(res.status()).toBe(401);
+});

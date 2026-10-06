@@ -1,10 +1,8 @@
-import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY;
 const API = process.env.PHASE7_API ?? "http://localhost:3000";
-const SECRET = process.env.PAYMENT_WEBHOOK_SECRET || "sandbox-dev-secret";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
@@ -17,7 +15,6 @@ if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
 }
 
 const admin = createClient(url, key, { auth: { persistSession: false } });
-const sign = (b) => crypto.createHmac("sha256", SECRET).update(b).digest("hex");
 
 const results = [];
 const check = (name, pass, detail) => {

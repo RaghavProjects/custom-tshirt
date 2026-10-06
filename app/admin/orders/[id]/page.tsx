@@ -120,6 +120,20 @@ export default async function AdminOrderPage({
             >
               Download design file (JSON)
             </a>
+            <a
+              href={`/api/admin/orders/${order.id}/print?format=png`}
+              data-testid="download-print-png"
+              className="underline"
+            >
+              Print file — DTF/vinyl (PNG)
+            </a>
+            <a
+              href={`/api/admin/orders/${order.id}/print?format=svg`}
+              data-testid="download-print-svg"
+              className="underline"
+            >
+              Embroidery (SVG)
+            </a>
           </div>
         </section>
       )}
