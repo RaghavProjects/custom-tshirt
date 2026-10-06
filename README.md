@@ -50,8 +50,12 @@ Apply the migrations in `supabase/migrations/` in order (SQL editor or CLI):
 
 ## Status
 
-Phases 0–8 of `IMPLEMENTATION-PLAN.md` are built and proven. Phases 9 (deploy)
-and 10 (optional AI features) remain.
+Live: https://custom-tshirt-five.vercel.app
+
+Phases 0–9 of `IMPLEMENTATION-PLAN.md` are built and proven (deploy verified:
+home `200` with the catalogue, `/admin` redirects to sign-in, order API rejects
+bad input `400`, studio `200`, upload rejects non-images `400`). Phase 10
+(optional AI features) remains.
 
 ## Owner-supplied values (not invented)
 
