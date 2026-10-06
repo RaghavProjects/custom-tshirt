@@ -6,13 +6,18 @@ import type { DesignElement, PrintArea } from "./design";
  * units are treated as 72dpi points and scaled to the target DPI.
  */
 export const PLACEHOLDER_PRINT_DPI = 300;
-const STAGE_DPI = 72;
+export const STAGE_DPI = 72;
+
+/** Conversion from studio stage units to output pixels at a given DPI. */
+export function stageScale(dpi: number = PLACEHOLDER_PRINT_DPI): number {
+  return dpi / STAGE_DPI;
+}
 
 export function computeOutputSize(
   printArea: PrintArea,
   dpi: number = PLACEHOLDER_PRINT_DPI,
 ): { width: number; height: number } {
-  const scale = dpi / STAGE_DPI;
+  const scale = stageScale(dpi);
   return {
     width: Math.round(printArea.width * scale),
     height: Math.round(printArea.height * scale),
@@ -111,7 +116,7 @@ export function compositePosition({
   rotatedHeight: number;
   dpi?: number;
 }): { left: number; top: number } {
-  const scale = dpi / STAGE_DPI;
+  const scale = stageScale(dpi);
   const theta = (el.rotation * Math.PI) / 180;
   const w = el.kind === "image" ? el.width * el.scaleX * scale : 0;
   const h = el.kind === "image" ? el.height * el.scaleY * scale : 0;

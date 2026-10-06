@@ -1,12 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { sandboxPaymentsAllowed } from "@/lib/payments/provider";
 import { signSandbox } from "@/lib/payments/sandbox";
 
 /**
  * Sandbox "gateway": stands in for a real provider. It emits a signed webhook
  * to the app, exactly as a real provider would, so the webhook path (signature
  * check, idempotency, paid-only-on-confirmation) is what actually runs.
+ *
+ * This marks orders paid without any real payment, so it is disabled in
+ * production unless sandbox payments are explicitly allowed.
  */
 export async function POST(request: NextRequest) {
+  if (!sandboxPaymentsAllowed()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const body = (await request.json().catch(() => null)) as {
     orderIds?: unknown;
   } | null;

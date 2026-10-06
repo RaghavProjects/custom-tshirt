@@ -1,7 +1,4 @@
-import type { DesignElement } from "@/lib/design";
-
-const STAGE_W = 520;
-const STAGE_H = 600;
+import { STAGE_H, STAGE_W, type DesignElement } from "@/lib/design";
 
 export default function DesignPreview({
   shirtColor,

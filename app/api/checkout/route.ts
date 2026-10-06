@@ -32,20 +32,29 @@ export async function POST(request: NextRequest) {
   const created: { orderId: string; unitPrice: number; total: number }[] = [];
 
   for (const item of items) {
-    const result = await createOrder({ ...item, customer, shipping });
-    if (!result.ok) {
-      // A partial checkout is not acceptable: undo everything already created.
+    try {
+      const result = await createOrder({ ...item, customer, shipping });
+      if (!result.ok) {
+        // A partial checkout is not acceptable: undo everything already created.
+        await rollback(created.map((c) => c.orderId));
+        return NextResponse.json(
+          { error: result.error },
+          { status: result.status },
+        );
+      }
+      created.push({
+        orderId: result.orderId,
+        unitPrice: result.unitPrice,
+        total: result.total,
+      });
+    } catch (err) {
+      // A throw (e.g. misconfigured provider) must not leave orphan orders.
       await rollback(created.map((c) => c.orderId));
       return NextResponse.json(
-        { error: result.error },
-        { status: result.status },
+        { error: `Checkout failed: ${(err as Error).message}` },
+        { status: 500 },
       );
     }
-    created.push({
-      orderId: result.orderId,
-      unitPrice: result.unitPrice,
-      total: result.total,
-    });
   }
 
   const orderIds = created.map((c) => c.orderId);

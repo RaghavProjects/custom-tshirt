@@ -11,13 +11,17 @@ if (listError) throw listError;
 
 const exists = buckets?.some((b) => b.name === "artwork");
 if (exists) {
-  console.log("bucket artwork already exists");
-} else {
-  const { error } = await supabase.storage.createBucket("artwork", {
-    public: true,
+  const { error } = await supabase.storage.updateBucket("artwork", {
+    public: false,
   });
   if (error) throw error;
-  console.log("created bucket artwork (public)");
+  console.log("bucket artwork exists -> set private");
+} else {
+  const { error } = await supabase.storage.createBucket("artwork", {
+    public: false,
+  });
+  if (error) throw error;
+  console.log("created bucket artwork (private)");
 }
 
 const after = await supabase.storage.listBuckets();

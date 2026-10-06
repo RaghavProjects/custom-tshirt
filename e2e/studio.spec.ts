@@ -68,7 +68,7 @@ test("a PNG upload is accepted and stored", async ({ request }) => {
   });
   expect(res.status()).toBe(201);
   const body = (await res.json()) as { url: string };
-  expect(body.url).toContain("/artwork/uploads/");
+  expect(body.url).toContain("/api/artwork/uploads/");
 });
 
 test("changing colour and size never loses the design", async ({

@@ -1,12 +1,20 @@
 import crypto from "node:crypto";
 import type { PaymentProvider, WebhookResult } from "./provider";
 
-// Sandbox only. A real provider supplies its own signing secret via env; this
-// fallback exists so the sandbox flow is reproducible in development.
-const SECRET = process.env.PAYMENT_WEBHOOK_SECRET || "sandbox-dev-secret";
+// Fail closed: the signing secret must be provided by the environment. A
+// committed default would let anyone forge a "paid" webhook.
+function getSecret(): string {
+  const secret = process.env.PAYMENT_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error(
+      "PAYMENT_WEBHOOK_SECRET is not set; refusing to sign or verify payments.",
+    );
+  }
+  return secret;
+}
 
 export function signSandbox(rawBody: string): string {
-  return crypto.createHmac("sha256", SECRET).update(rawBody).digest("hex");
+  return crypto.createHmac("sha256", getSecret()).update(rawBody).digest("hex");
 }
 
 export const sandboxProvider: PaymentProvider = {
@@ -20,9 +28,14 @@ export const sandboxProvider: PaymentProvider = {
   },
 
   verifyWebhook(rawBody, headers): WebhookResult {
-    const provided = headers["x-sandbox-signature"];
-    const expected = signSandbox(rawBody);
+    let expected: string;
+    try {
+      expected = signSandbox(rawBody);
+    } catch (err) {
+      return { ok: false, reason: (err as Error).message };
+    }
 
+    const provided = headers["x-sandbox-signature"];
     const a = Buffer.from(provided ?? "", "utf8");
     const b = Buffer.from(expected, "utf8");
     if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {

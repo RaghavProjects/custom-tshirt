@@ -1,6 +1,9 @@
 import type { DesignState } from "./design";
 
-export type PrintMethod = "dtf" | "embroidery" | "vinyl";
+/** One source of truth for print methods (UI, schema and DB enum mirror this). */
+export const PRINT_METHODS = ["dtf", "embroidery", "vinyl"] as const;
+
+export type PrintMethod = (typeof PRINT_METHODS)[number];
 
 export type CartItem = {
   id: string;

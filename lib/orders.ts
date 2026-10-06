@@ -1,40 +1,10 @@
 import { z } from "zod";
+import { PRINT_METHODS } from "@/lib/cart";
+import { designElementSchema } from "@/lib/design";
 
 export const hexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "must be a hex colour");
-
-const textElement = z.object({
-  id: z.string().min(1),
-  kind: z.literal("text"),
-  content: z.string(),
-  fontFamily: z.string().min(1),
-  fill: z.string().min(1),
-  fontSize: z.number().positive(),
-  x: z.number(),
-  y: z.number(),
-  scaleX: z.number(),
-  scaleY: z.number(),
-  rotation: z.number(),
-});
-
-const imageElement = z.object({
-  id: z.string().min(1),
-  kind: z.literal("image"),
-  url: z.string().url(),
-  x: z.number(),
-  y: z.number(),
-  width: z.number().positive(),
-  height: z.number().positive(),
-  scaleX: z.number(),
-  scaleY: z.number(),
-  rotation: z.number(),
-});
-
-const designElement = z.discriminatedUnion("kind", [
-  textElement,
-  imageElement,
-]);
 
 export const customerSchema = z.object({
   name: z.string().trim().min(1, "name is required"),
@@ -48,10 +18,13 @@ export const shippingSchema = z.object({
   pincode: z.string().trim().min(1, "pincode is required"),
 });
 
+// Bounded so one order cannot drive unbounded storage or rasterisation work.
+const MAX_ELEMENTS_PER_SIDE = 50;
+
 const designSchema = z.object({
   shirtColor: hexColor,
-  front: z.array(designElement),
-  back: z.array(designElement),
+  front: z.array(designElementSchema).max(MAX_ELEMENTS_PER_SIDE),
+  back: z.array(designElementSchema).max(MAX_ELEMENTS_PER_SIDE),
 });
 
 const hasElement = (o: { design: z.infer<typeof designSchema> }) =>
@@ -69,7 +42,7 @@ const orderCore = z.object({
   colorHex: hexColor,
   quantity: z.number().int().positive(),
   sizeBreakdown: z.record(z.string().min(1), z.number().int().nonnegative()),
-  printMethod: z.enum(["dtf", "embroidery", "vinyl"]),
+  printMethod: z.enum(PRINT_METHODS),
   design: designSchema,
 });
 
@@ -106,11 +79,13 @@ export const orderSchema = orderCore
 export const checkoutSchema = z.object({
   customer: customerSchema,
   shipping: shippingSchema,
-  items: z.array(orderItemSchema).min(1, "at least one item is required"),
+  items: z
+    .array(orderItemSchema)
+    .min(1, "at least one item is required")
+    .max(25, "too many items in one checkout"),
 });
 
 export type OrderInput = z.infer<typeof orderSchema>;
-export type OrderItemInput = z.infer<typeof orderItemSchema>;
 
 export type FieldIssue = { path: string; message: string };
 

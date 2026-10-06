@@ -7,17 +7,36 @@ import {
   computeOutputSize,
   designToSvg,
   PLACEHOLDER_PRINT_DPI,
+  stageScale,
   textLayerSvg,
 } from "@/lib/print";
 import { getStudioSettings } from "@/lib/settings";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-const STAGE_DPI = 72;
+/** Only fetch artwork from our own proxy path or the project's storage host. */
+function allowedArtworkUrl(
+  raw: string,
+  origin: string,
+  storageHost: string | null,
+): string | null {
+  if (raw.startsWith("data:")) return raw;
+  let parsed: URL;
+  try {
+    parsed = new URL(raw, origin);
+  } catch {
+    return null;
+  }
+  if (parsed.origin === origin && parsed.pathname.startsWith("/api/artwork/")) {
+    return parsed.toString();
+  }
+  if (storageHost && parsed.host === storageHost) return parsed.toString();
+  return null;
+}
 
-async function fetchBytes(url: string): Promise<Buffer | null> {
+async function fetchBytes(url: string | null): Promise<Buffer | null> {
+  if (!url) return null;
   if (url.startsWith("data:")) {
-    const base64 = url.split(",")[1] ?? "";
-    return Buffer.from(base64, "base64");
+    return Buffer.from(url.split(",")[1] ?? "", "base64");
   }
   try {
     const res = await fetch(url);
@@ -31,9 +50,11 @@ async function fetchBytes(url: string): Promise<Buffer | null> {
 async function renderPng(
   elements: DesignElement[],
   printArea: { x: number; y: number; width: number; height: number },
+  origin: string,
+  storageHost: string | null,
 ): Promise<Buffer> {
   const dpi = PLACEHOLDER_PRINT_DPI;
-  const scale = dpi / STAGE_DPI;
+  const scale = stageScale(dpi);
   const { width, height } = computeOutputSize(printArea, dpi);
 
   // Text renders through SVG (reliable with sharp's renderer).
@@ -44,7 +65,8 @@ async function renderPng(
 
   for (const el of elements) {
     if (el.kind !== "image") continue;
-    const bytes = await fetchBytes(el.url);
+    const safeUrl = allowedArtworkUrl(el.url, origin, storageHost);
+    const bytes = await fetchBytes(safeUrl);
     if (!bytes) continue;
 
     const targetW = Math.max(1, Math.round(el.width * el.scaleX * scale));
@@ -86,11 +108,13 @@ async function renderPng(
     baseBuf = await sharp(baseBuf).composite(composites).png().toBuffer();
   }
 
-  // Guard: never hand back a smaller canvas than expected.
   const meta = await sharp(baseBuf).metadata();
   if (meta.width !== width || meta.height !== height) {
     baseBuf = await sharp(baseBuf)
-      .resize(width, height, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .resize(width, height, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
       .png()
       .toBuffer();
   }
@@ -131,6 +155,13 @@ export async function GET(
   ];
 
   const settings = await getStudioSettings();
+  const origin = new URL(request.url).origin;
+  let storageHost: string | null = null;
+  try {
+    storageHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").host;
+  } catch {
+    storageHost = null;
+  }
 
   if (format === "svg") {
     const svg = designToSvg({ printArea: settings.printArea, elements });
@@ -143,7 +174,7 @@ export async function GET(
   }
 
   try {
-    const png = await renderPng(elements, settings.printArea);
+    const png = await renderPng(elements, settings.printArea, origin, storageHost);
     return new NextResponse(new Uint8Array(png), {
       headers: {
         "content-type": "image/png",

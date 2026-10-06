@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  clampBoxTopLeft,
   deserializeDesign,
+  elementBox,
   isBoxInsideArea,
   luminance,
   makeTextElement,
@@ -32,24 +32,26 @@ describe("isBoxInsideArea", () => {
   });
 });
 
-describe("clampBoxTopLeft", () => {
-  it("leaves an inside box where it is", () => {
-    expect(clampBoxTopLeft({ x: 150, y: 150, width: 50, height: 50 }, area)).toEqual(
-      { x: 150, y: 150 },
-    );
-  });
-
-  it("pulls a box back from the right and bottom edges", () => {
-    expect(
-      clampBoxTopLeft({ x: 380, y: 460, width: 100, height: 100 }, area),
-    ).toEqual({ x: 300, y: 400 });
-  });
-
-  it("pulls a box back from the top-left corner", () => {
-    expect(clampBoxTopLeft({ x: 10, y: 10, width: 40, height: 40 }, area)).toEqual({
-      x: 100,
-      y: 100,
+describe("elementBox", () => {
+  it("bounds an image by its scaled size", () => {
+    const box = elementBox({
+      id: "i",
+      kind: "image",
+      url: "/api/artwork/uploads/x.png",
+      x: 120,
+      y: 130,
+      width: 100,
+      height: 50,
+      scaleX: 2,
+      scaleY: 1,
+      rotation: 0,
     });
+    expect(box).toEqual({ x: 120, y: 130, width: 200, height: 50 });
+  });
+
+  it("flags text far outside the print area as out of bounds", () => {
+    const el = makeTextElement({ x: 10, y: 10, content: "Hello", fontSize: 24 });
+    expect(isBoxInsideArea(elementBox(el), area)).toBe(false);
   });
 });
 

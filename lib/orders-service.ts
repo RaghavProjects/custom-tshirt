@@ -2,6 +2,7 @@ import { getPaymentProvider } from "@/lib/payments/provider";
 import { orderTotal, unitPriceFor } from "@/lib/pricing";
 import { getStudioSettings } from "@/lib/settings";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { elementBox, isBoxInsideArea } from "@/lib/design";
 import type { OrderInput } from "@/lib/orders";
 
 export type CreateResult =
@@ -61,6 +62,20 @@ export async function createOrder(input: OrderInput): Promise<CreateResult> {
   }
 
   const settings = await getStudioSettings();
+
+  // The print area is enforced server-side too, not only by the canvas clamp:
+  // art outside it would be silently clipped out of the print file.
+  const outside = [...input.design.front, ...input.design.back].find(
+    (el) => !isBoxInsideArea(elementBox(el), settings.printArea),
+  );
+  if (outside) {
+    return {
+      ok: false,
+      status: 400,
+      error: "A design element is outside the printable area.",
+    };
+  }
+
   const unitPrice = unitPriceFor(
     product.base_price,
     input.quantity,

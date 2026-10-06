@@ -7,7 +7,20 @@ export async function POST(request: NextRequest) {
   const raw = await request.text();
   const headers = Object.fromEntries(request.headers.entries());
 
-  const provider = getPaymentProvider();
+  const provider = (() => {
+    try {
+      return getPaymentProvider();
+    } catch {
+      return null;
+    }
+  })();
+  if (!provider) {
+    return NextResponse.json(
+      { error: "Payments are not configured." },
+      { status: 503 },
+    );
+  }
+
   const event = provider.verifyWebhook(raw, headers);
   if (!event.ok) {
     // Unverified events change nothing.
@@ -31,9 +44,16 @@ export async function POST(request: NextRequest) {
   }
 
   if (event.status === "failed") {
+    // Never downgrade a confirmed payment, and never act twice on one event.
+    if (
+      order.payment_status === "paid" ||
+      order.payment_event_id === event.eventId
+    ) {
+      return NextResponse.json({ ok: true, ignored: true });
+    }
     await admin
       .from("orders")
-      .update({ payment_status: "failed" })
+      .update({ payment_status: "failed", payment_event_id: event.eventId })
       .eq("id", order.id);
     return NextResponse.json({ ok: true, status: "failed" });
   }

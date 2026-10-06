@@ -30,12 +30,17 @@ function clampNodeToArea(node: Konva.Node, area: PrintArea) {
   let dx = 0;
   let dy = 0;
 
-  if (r.x < area.x) dx = area.x - r.x;
-  if (r.x + r.width > area.x + area.width)
-    dx = area.x + area.width - (r.x + r.width);
-  if (r.y < area.y) dy = area.y - r.y;
-  if (r.y + r.height > area.y + area.height)
-    dy = area.y + area.height - (r.y + r.height);
+  // Use else-if so the two edges cannot overwrite each other's correction.
+  if (r.width <= area.width) {
+    if (r.x < area.x) dx = area.x - r.x;
+    else if (r.x + r.width > area.x + area.width)
+      dx = area.x + area.width - (r.x + r.width);
+  }
+  if (r.height <= area.height) {
+    if (r.y < area.y) dy = area.y - r.y;
+    else if (r.y + r.height > area.y + area.height)
+      dy = area.y + area.height - (r.y + r.height);
+  }
 
   node.x(node.x() + dx);
   node.y(node.y() + dy);

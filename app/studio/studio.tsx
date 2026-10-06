@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { addToCart, type PrintMethod } from "@/lib/cart";
+import { addToCart, PRINT_METHODS, type PrintMethod } from "@/lib/cart";
 import { removeImageBackground } from "@/lib/remove-bg";
 import {
   deleteSaved,
@@ -16,6 +16,8 @@ import {
   makeImageElement,
   makeTextElement,
   serializeDesign,
+  STAGE_H,
+  STAGE_W,
   TEXT_COLORS,
   TEXT_FONTS,
   type DesignElement,
@@ -34,10 +36,6 @@ const Canvas = dynamic(() => import("./canvas"), {
     </div>
   ),
 });
-
-const STAGE_W = 520;
-const STAGE_H = 600;
-const PRINT_METHODS: PrintMethod[] = ["dtf", "embroidery", "vinyl"];
 
 type StudioProps = {
   productId: string;

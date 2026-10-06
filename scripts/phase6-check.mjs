@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY;
 const API = process.env.PHASE6_API ?? "http://localhost:3000";
-const SECRET = process.env.PAYMENT_WEBHOOK_SECRET || "sandbox-dev-secret";
+const SECRET = process.env.PAYMENT_WEBHOOK_SECRET;
 if (!url || !key) throw new Error("Missing Supabase env");
 
 const admin = createClient(url, key, { auth: { persistSession: false } });
@@ -44,8 +44,8 @@ try {
     fontFamily: "Arial",
     fill: "#ffffff",
     fontSize: 24,
-    x: 10,
-    y: 10,
+    x: 140,
+    y: 150,
     scaleX: 1,
     scaleY: 1,
     rotation: 0,
