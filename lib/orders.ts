@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "must be a hex colour");
+export const hexColor = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/, "must be a hex colour");
 
 const textElement = z.object({
   id: z.string().min(1),
@@ -34,45 +36,81 @@ const designElement = z.discriminatedUnion("kind", [
   imageElement,
 ]);
 
-export const orderSchema = z
-  .object({
-    productId: z.string().uuid(),
-    colorHex: hexColor,
-    quantity: z.number().int().positive(),
-    sizeBreakdown: z.record(z.string().min(1), z.number().int().nonnegative()),
-    printMethod: z.enum(["dtf", "embroidery", "vinyl"]),
-    customer: z.object({
-      name: z.string().trim().min(1, "name is required"),
-      phone: z.string().trim().min(1, "phone is required"),
-      email: z.email("a valid email is required"),
-    }),
-    shipping: z.object({
-      line1: z.string().trim().min(1, "address is required"),
-      city: z.string().trim().min(1, "city is required"),
-      pincode: z.string().trim().min(1, "pincode is required"),
-    }),
-    design: z.object({
-      shirtColor: hexColor,
-      front: z.array(designElement),
-      back: z.array(designElement),
-    }),
+export const customerSchema = z.object({
+  name: z.string().trim().min(1, "name is required"),
+  phone: z.string().trim().min(1, "phone is required"),
+  email: z.email("a valid email is required"),
+});
+
+export const shippingSchema = z.object({
+  line1: z.string().trim().min(1, "address is required"),
+  city: z.string().trim().min(1, "city is required"),
+  pincode: z.string().trim().min(1, "pincode is required"),
+});
+
+const designSchema = z.object({
+  shirtColor: hexColor,
+  front: z.array(designElement),
+  back: z.array(designElement),
+});
+
+const hasElement = (o: { design: z.infer<typeof designSchema> }) =>
+  o.design.front.length + o.design.back.length >= 1;
+const sizesSumToQuantity = (o: {
+  quantity: number;
+  sizeBreakdown: Record<string, number>;
+}) =>
+  Object.values(o.sizeBreakdown).reduce((sum, n) => sum + n, 0) === o.quantity;
+const someSizePositive = (o: { sizeBreakdown: Record<string, number> }) =>
+  Object.values(o.sizeBreakdown).some((n) => n > 0);
+
+const orderCore = z.object({
+  productId: z.string().uuid(),
+  colorHex: hexColor,
+  quantity: z.number().int().positive(),
+  sizeBreakdown: z.record(z.string().min(1), z.number().int().nonnegative()),
+  printMethod: z.enum(["dtf", "embroidery", "vinyl"]),
+  design: designSchema,
+});
+
+/** A single line item: the order fields minus customer/shipping. */
+export const orderItemSchema = orderCore
+  .refine(hasElement, {
+    message: "an order needs at least one design element",
+    path: ["design"],
   })
-  .refine(
-    (o) => o.design.front.length + o.design.back.length >= 1,
-    { message: "an order needs at least one design element", path: ["design"] },
-  )
-  .refine(
-    (o) =>
-      Object.values(o.sizeBreakdown).reduce((sum, n) => sum + n, 0) ===
-      o.quantity,
-    { message: "size breakdown must sum to the quantity", path: ["sizeBreakdown"] },
-  )
-  .refine(
-    (o) => Object.values(o.sizeBreakdown).some((n) => n > 0),
-    { message: "at least one size must have quantity above zero", path: ["sizeBreakdown"] },
-  );
+  .refine(sizesSumToQuantity, {
+    message: "size breakdown must sum to the quantity",
+    path: ["sizeBreakdown"],
+  })
+  .refine(someSizePositive, {
+    message: "at least one size must have quantity above zero",
+    path: ["sizeBreakdown"],
+  });
+
+export const orderSchema = orderCore
+  .extend({ customer: customerSchema, shipping: shippingSchema })
+  .refine(hasElement, {
+    message: "an order needs at least one design element",
+    path: ["design"],
+  })
+  .refine(sizesSumToQuantity, {
+    message: "size breakdown must sum to the quantity",
+    path: ["sizeBreakdown"],
+  })
+  .refine(someSizePositive, {
+    message: "at least one size must have quantity above zero",
+    path: ["sizeBreakdown"],
+  });
+
+export const checkoutSchema = z.object({
+  customer: customerSchema,
+  shipping: shippingSchema,
+  items: z.array(orderItemSchema).min(1, "at least one item is required"),
+});
 
 export type OrderInput = z.infer<typeof orderSchema>;
+export type OrderItemInput = z.infer<typeof orderItemSchema>;
 
 export type FieldIssue = { path: string; message: string };
 

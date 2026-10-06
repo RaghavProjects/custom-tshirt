@@ -1,7 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { addToCart, type PrintMethod } from "@/lib/cart";
 import {
   deserializeDesign,
   makeImageElement,
@@ -28,6 +30,7 @@ const Canvas = dynamic(() => import("./canvas"), {
 
 const STAGE_W = 520;
 const STAGE_H = 600;
+const PRINT_METHODS: PrintMethod[] = ["dtf", "embroidery", "vinyl"];
 
 type StudioProps = {
   productId: string;
@@ -61,6 +64,12 @@ export default function Studio({
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
 
+  const [printMethod, setPrintMethod] = useState<PrintMethod>("dtf");
+  const [qty, setQty] = useState(1);
+  const [bulk, setBulk] = useState(false);
+  const [bulkQty, setBulkQty] = useState<Record<string, number>>({});
+  const [added, setAdded] = useState(false);
+
   const wrapRef = useRef<HTMLDivElement>(null);
   const [avail, setAvail] = useState(STAGE_W);
 
@@ -93,6 +102,15 @@ export default function Studio({
   const selected = elements.find((e) => e.id === selectedId) ?? null;
   const color = colors.find((c) => c.hex === colorHex) ?? null;
 
+  const sizeBreakdown: Record<string, number> = bulk
+    ? Object.fromEntries(
+        Object.entries(bulkQty).filter(([, n]) => n > 0),
+      )
+    : { [size]: qty };
+  const quantity = Object.values(sizeBreakdown).reduce((a, b) => a + b, 0);
+  const totalElements = design.front.length + design.back.length;
+  const canAdd = totalElements >= 1 && quantity >= 1;
+
   function updateElement(id: string, attrs: Partial<DesignElement>) {
     setDesign((prev) => ({
       ...prev,
@@ -118,6 +136,21 @@ export default function Studio({
       [side]: prev[side].filter((e) => e.id !== selectedId),
     }));
     setSelectedId(null);
+  }
+
+  function onAddToCart() {
+    if (!canAdd) return;
+    addToCart({
+      productId,
+      productName,
+      colorHex,
+      colorName: color?.name ?? colorHex,
+      printMethod,
+      quantity,
+      sizeBreakdown,
+      design,
+    });
+    setAdded(true);
   }
 
   async function onUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -200,9 +233,7 @@ export default function Studio({
               aria-pressed={s === size}
               onClick={() => setSize(s)}
               className={`h-9 min-w-9 rounded-lg border px-3 text-sm ${
-                s === size
-                  ? "border-accent bg-accent text-white"
-                  : "border-line"
+                s === size ? "border-accent bg-accent text-white" : "border-line"
               }`}
             >
               {s}
@@ -378,6 +409,95 @@ export default function Studio({
           them.
         </p>
       )}
+
+      <section className="flex flex-wrap items-end gap-6 rounded-2xl border border-line bg-white p-4">
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          Print method
+          <select
+            data-testid="print-method"
+            value={printMethod}
+            onChange={(e) => setPrintMethod(e.target.value as PrintMethod)}
+            className="h-10 rounded-lg border border-line px-3 text-sm capitalize text-fg"
+          >
+            {PRINT_METHODS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            data-testid="bulk-toggle"
+            checked={bulk}
+            onChange={(e) => setBulk(e.target.checked)}
+          />
+          Bulk (quantity per size)
+        </label>
+
+        {!bulk ? (
+          <label className="flex flex-col gap-1 text-xs text-muted">
+            Quantity
+            <input
+              type="number"
+              min={1}
+              data-testid="quantity"
+              value={qty}
+              onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+              className="h-10 w-20 rounded-lg border border-line px-3 text-sm text-fg"
+            />
+          </label>
+        ) : (
+          <div className="flex flex-wrap items-end gap-2">
+            {sizes.map((s) => (
+              <label key={s} className="flex flex-col gap-1 text-xs text-muted">
+                {s}
+                <input
+                  type="number"
+                  min={0}
+                  data-testid={`bulk-${s}`}
+                  value={bulkQty[s] ?? 0}
+                  onChange={(e) =>
+                    setBulkQty((prev) => ({
+                      ...prev,
+                      [s]: Math.max(0, Number(e.target.value) || 0),
+                    }))
+                  }
+                  className="h-10 w-16 rounded-lg border border-line px-3 text-sm text-fg"
+                />
+              </label>
+            ))}
+          </div>
+        )}
+
+        <span className="text-sm text-muted" data-testid="quantity-total">
+          Total: {quantity}
+        </span>
+
+        <button
+          type="button"
+          data-testid="add-to-cart"
+          onClick={onAddToCart}
+          disabled={!canAdd}
+          className="h-11 rounded-full bg-accent px-6 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Add to cart
+        </button>
+
+        {added && (
+          <Link href="/cart" className="text-sm text-accent underline">
+            View cart
+          </Link>
+        )}
+
+        {totalElements === 0 && (
+          <p className="text-sm text-muted">
+            Add text or artwork before adding to cart.
+          </p>
+        )}
+      </section>
 
       <section
         aria-label="Design elements"
