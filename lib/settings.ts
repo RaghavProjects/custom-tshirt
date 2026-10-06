@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { PrintArea } from "@/lib/design";
+import type { PriceBreak } from "@/lib/pricing";
 
 export type ArtworkRules = {
   acceptedTypes: string[];
@@ -12,6 +13,7 @@ export type StudioSettings = {
   printArea: PrintArea;
   printAreaIsPlaceholder: boolean;
   artworkRules: ArtworkRules;
+  bulkPriceBreaks: PriceBreak[];
 };
 
 // Owner slots are empty (all null). These placeholders keep the studio usable
@@ -31,7 +33,24 @@ type SettingsData = {
     accepted_types?: string[] | null;
     max_file_size_bytes?: number | null;
   } | null;
+  bulk_price_breaks?: { min_qty?: number; unit_price?: number }[] | null;
 };
+
+function parseBreaks(
+  raw: { min_qty?: number; unit_price?: number }[] | null | undefined,
+): PriceBreak[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (b) =>
+        typeof b?.min_qty === "number" &&
+        Number.isFinite(b.min_qty) &&
+        typeof b?.unit_price === "number" &&
+        Number.isFinite(b.unit_price),
+    )
+    .map((b) => ({ minQty: b.min_qty as number, unitPrice: b.unit_price as number }))
+    .sort((a, b) => a.minQty - b.minQty);
+}
 
 export async function getStudioSettings(): Promise<StudioSettings> {
   const { data, error } = await supabaseAdmin()
@@ -56,5 +75,6 @@ export async function getStudioSettings(): Promise<StudioSettings> {
       maxFileSizeBytes: maxBytes ?? PLACEHOLDER_MAX_BYTES,
       isPlaceholder: accepted === null || maxBytes === null,
     },
+    bulkPriceBreaks: parseBreaks(d.bulk_price_breaks),
   };
 }
