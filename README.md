@@ -54,8 +54,16 @@ Live: https://custom-tshirt-five.vercel.app
 
 Phases 0–9 of `IMPLEMENTATION-PLAN.md` are built and proven (deploy verified:
 home `200` with the catalogue, `/admin` redirects to sign-in, order API rejects
-bad input `400`, studio `200`, upload rejects non-images `400`). Phase 10
-(optional AI features) remains.
+bad input `400`, studio `200`, upload rejects non-images `400`).
+
+Phase 10 (optional) delivered:
+
+- **Saved designs** — save a design by name, reload and reuse it (tested).
+- **Background removal** — client-side, no key (`@imgly/background-removal`).
+  Implemented; **UNVERIFIED** end to end (the WASM model was not exercised here).
+- **AI design from a text prompt** — provider abstraction; returns a clear
+  `501 "not configured"` until an image-provider key is set. The live provider
+  path is **UNVERIFIED** (no key configured).
 
 ## Owner-supplied values (not invented)
 

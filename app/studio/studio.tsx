@@ -4,6 +4,13 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { addToCart, type PrintMethod } from "@/lib/cart";
+import { removeImageBackground } from "@/lib/remove-bg";
+import {
+  deleteSaved,
+  saveDesign,
+  savedForProduct,
+  type SavedDesign,
+} from "@/lib/saved-designs";
 import {
   deserializeDesign,
   makeImageElement,
@@ -70,6 +77,13 @@ export default function Studio({
   const [bulkQty, setBulkQty] = useState<Record<string, number>>({});
   const [added, setAdded] = useState(false);
 
+  const [saved, setSaved] = useState<SavedDesign[]>([]);
+  const [saveName, setSaveName] = useState("");
+  const [bgBusy, setBgBusy] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiNotice, setAiNotice] = useState<string | null>(null);
+
   const wrapRef = useRef<HTMLDivElement>(null);
   const [avail, setAvail] = useState(STAGE_W);
 
@@ -81,8 +95,9 @@ export default function Studio({
     // the design is client-only state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDesign(deserializeDesign(localStorage.getItem(storageKey)));
+    setSaved(savedForProduct(productId));
     setReady(true);
-  }, [storageKey]);
+  }, [storageKey, productId]);
 
   useEffect(() => {
     if (ready) localStorage.setItem(storageKey, serializeDesign(design));
@@ -151,6 +166,106 @@ export default function Studio({
       design,
     });
     setAdded(true);
+  }
+
+  function saveCurrent() {
+    if (totalElements === 0) {
+      setError("Add text or artwork before saving.");
+      return;
+    }
+    saveDesign({
+      name: saveName.trim() || "Untitled design",
+      productId,
+      productName,
+      colorHex,
+      colorName: color?.name ?? colorHex,
+      printMethod,
+      quantity,
+      sizeBreakdown,
+      design,
+    });
+    setSaved(savedForProduct(productId));
+    setSaveName("");
+  }
+
+  function loadSavedDesign(sd: SavedDesign) {
+    setDesign(sd.design);
+    setColorHex(sd.colorHex);
+    setPrintMethod(sd.printMethod);
+    setBulk(false);
+    setQty(Math.max(1, sd.quantity));
+    const firstSize = Object.keys(sd.sizeBreakdown)[0];
+    if (firstSize && sizes.includes(firstSize)) setSize(firstSize);
+    setSelectedId(null);
+    setAdded(false);
+  }
+
+  async function removeBg() {
+    if (selected?.kind !== "image") return;
+    setError(null);
+    setBgBusy(true);
+    try {
+      const res = await fetch(selected.url);
+      const blob = await res.blob();
+      const out = await removeImageBackground(blob);
+      const body = new FormData();
+      body.append("file", new File([out], "no-bg.png", { type: "image/png" }));
+      const up = await fetch("/api/upload", { method: "POST", body });
+      const json = (await up.json()) as { url?: string; error?: string };
+      if (!up.ok || !json.url) {
+        setError(json.error ?? "Background removal failed.");
+        return;
+      }
+      updateElement(selected.id, { url: json.url });
+    } catch {
+      setError("Background removal failed.");
+    } finally {
+      setBgBusy(false);
+    }
+  }
+
+  async function generate() {
+    setAiNotice(null);
+    setAiBusy(true);
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: aiPrompt }),
+      });
+      const json = (await res.json().catch(() => null)) as {
+        url?: string;
+        error?: string;
+      } | null;
+      if (!res.ok || !json?.url) {
+        setAiNotice(json?.error ?? "Generation failed.");
+        return;
+      }
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      img.src = json.url;
+      await img.decode().catch(() => undefined);
+      const maxW = printArea.width * 0.5;
+      const maxH = printArea.height * 0.5;
+      const ratio = Math.min(
+        maxW / (img.naturalWidth || 1),
+        maxH / (img.naturalHeight || 1),
+        1,
+      );
+      const el = makeImageElement({
+        url: json.url,
+        x: printArea.x + printArea.width * 0.25,
+        y: printArea.y + printArea.height * 0.25,
+        width: Math.round((img.naturalWidth || 120) * ratio),
+        height: Math.round((img.naturalHeight || 120) * ratio),
+      });
+      setDesign((prev) => ({ ...prev, [side]: [...prev[side], el] }));
+      setSelectedId(el.id);
+    } catch {
+      setAiNotice("Generation failed.");
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   async function onUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -497,6 +612,103 @@ export default function Studio({
             Add text or artwork before adding to cart.
           </p>
         )}
+      </section>
+
+      <section className="flex flex-col gap-6 rounded-2xl border border-line bg-white p-4">
+        <div className="flex flex-col gap-3">
+          <h2 className="font-display text-lg">Save & reuse</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              data-testid="save-name"
+              value={saveName}
+              placeholder="Name this design"
+              onChange={(e) => setSaveName(e.target.value)}
+              className="h-10 w-56 rounded-lg border border-line px-3 text-sm"
+            />
+            <button
+              type="button"
+              data-testid="save-design"
+              onClick={saveCurrent}
+              className="h-10 rounded-full border border-line px-5 text-sm"
+            >
+              Save design
+            </button>
+          </div>
+          {saved.length > 0 && (
+            <ul className="flex flex-col gap-2 text-sm">
+              {saved.map((sd) => (
+                <li
+                  key={sd.id}
+                  data-testid="saved-item"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line px-3 py-2"
+                >
+                  <span>
+                    {sd.name}{" "}
+                    <span className="text-muted">
+                      · {sd.colorName} · {Object.keys(sd.sizeBreakdown).join("/")}
+                    </span>
+                  </span>
+                  <span className="flex gap-3">
+                    <button
+                      type="button"
+                      data-testid={`load-saved-${sd.id}`}
+                      onClick={() => loadSavedDesign(sd)}
+                      className="text-accent underline"
+                    >
+                      Load
+                    </button>
+                    <button
+                      type="button"
+                      data-testid={`delete-saved-${sd.id}`}
+                      onClick={() => setSaved(deleteSaved(sd.id))}
+                      className="text-muted underline"
+                    >
+                      Delete
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-line pt-4">
+          <h2 className="font-display text-lg">AI tools</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              data-testid="ai-prompt"
+              value={aiPrompt}
+              placeholder="Describe a design"
+              onChange={(e) => setAiPrompt(e.target.value)}
+              className="h-10 w-64 rounded-lg border border-line px-3 text-sm"
+            />
+            <button
+              type="button"
+              data-testid="ai-generate"
+              onClick={generate}
+              disabled={aiBusy || aiPrompt.trim().length < 3}
+              className="h-10 rounded-full border border-line px-5 text-sm disabled:opacity-40"
+            >
+              {aiBusy ? "Generating…" : "Generate design"}
+            </button>
+            {selected?.kind === "image" && (
+              <button
+                type="button"
+                data-testid="remove-bg"
+                onClick={removeBg}
+                disabled={bgBusy}
+                className="h-10 rounded-full border border-line px-5 text-sm disabled:opacity-40"
+              >
+                {bgBusy ? "Removing…" : "Remove background"}
+              </button>
+            )}
+          </div>
+          {aiNotice && (
+            <p data-testid="ai-notice" className="text-sm text-muted">
+              {aiNotice}
+            </p>
+          )}
+        </div>
       </section>
 
       <section
