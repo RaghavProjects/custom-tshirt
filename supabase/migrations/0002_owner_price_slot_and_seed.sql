@@ -6,7 +6,16 @@
 --    stays NULL on purpose.
 
 alter table products alter column base_price drop not null;
-alter table products add constraint products_name_key unique (name);
+
+-- Guard so this migration can be re-run without "constraint already exists".
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'products_name_key'
+  ) then
+    alter table products add constraint products_name_key unique (name);
+  end if;
+end $$;
 
 insert into products (name, category) values
   ('Crew Neck Tee', 'tee'),
