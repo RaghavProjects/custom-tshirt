@@ -28,23 +28,23 @@ test("the order API rejects an empty payload and names the problems", async ({
   expect(body.fields.length).toBeGreaterThan(0);
 });
 
-test("an order for a product with no owner price is refused, not faked", async ({
+test("an order with a colour the product does not offer is refused", async ({
   page,
   request,
 }) => {
-  const { productId, colorHex } = await firstProductAndColor(page);
+  const { productId } = await firstProductAndColor(page);
 
   const res = await request.post("/api/orders", {
     data: {
       productId,
-      colorHex,
+      colorHex: "#123456",
       quantity: 1,
       sizeBreakdown: { M: 1 },
       printMethod: "dtf",
       customer: { name: "Asha", phone: "9999999999", email: "a@example.com" },
       shipping: { line1: "1 MG Road", city: "Jaipur", pincode: "302001" },
       design: {
-        shirtColor: colorHex,
+        shirtColor: "#123456",
         front: [
           {
             id: "el-1",
@@ -65,7 +65,7 @@ test("an order for a product with no owner price is refused, not faked", async (
     },
   });
 
-  expect(res.status()).toBe(409);
+  expect(res.status()).toBe(400);
   const body = (await res.json()) as { error: string };
-  expect(body.error).toContain("Pricing is not configured");
+  expect(body.error).toContain("Colour is not available");
 });
