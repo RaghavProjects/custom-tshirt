@@ -23,7 +23,12 @@ export default async function AdminHome() {
     <main className="mx-auto w-full max-w-5xl px-6 py-12 sm:py-16">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-3xl">Orders</h1>
-        <span className="text-sm text-muted">{user.email}</span>
+        <span className="flex items-center gap-4 text-sm text-muted">
+          <Link href="/admin/settings" data-testid="admin-settings-link" className="underline">
+            Settings
+          </Link>
+          {user.email}
+        </span>
       </div>
 
       {orders.length === 0 ? (

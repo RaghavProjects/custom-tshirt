@@ -40,3 +40,13 @@ test("the print-file download rejects an unauthenticated caller", async ({
   );
   expect(res.status()).toBe(401);
 });
+
+test("the settings page requires sign-in", async ({ page }) => {
+  await page.goto("/admin/settings");
+  await expect(page).toHaveURL(/\/admin\/login/);
+});
+
+test("the settings API rejects an unauthenticated caller", async ({ request }) => {
+  const res = await request.post("/api/admin/settings", { data: {} });
+  expect(res.status()).toBe(401);
+});
