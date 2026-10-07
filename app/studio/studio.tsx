@@ -491,28 +491,20 @@ export default function Studio({
 
       <div ref={wrapRef} className="w-full">
         <div
-          style={{ width: STAGE_W * scale, height: STAGE_H * scale }}
           className="mx-auto"
+          style={{ width: Math.round(STAGE_W * scale) }}
         >
-          <div
-            style={{
-              transform: `scale(${scale})`,
-              transformOrigin: "top left",
-              width: STAGE_W,
-              height: STAGE_H,
-            }}
-          >
-            <Canvas
-              width={STAGE_W}
-              height={STAGE_H}
-              shirtColor={colorHex}
-              printArea={printArea}
-              elements={elements}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onChange={updateElement}
-            />
-          </div>
+          <Canvas
+            width={STAGE_W}
+            height={STAGE_H}
+            scale={scale}
+            shirtColor={colorHex}
+            printArea={printArea}
+            elements={elements}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onChange={updateElement}
+          />
         </div>
       </div>
 
