@@ -101,3 +101,18 @@ test("an image element can be selected, moved and removed", async ({ page }) => 
     el,
   );
 });
+
+test("Clear all empties the canvas and it stays empty after reload", async ({
+  page,
+}) => {
+  await toStudio(page);
+  await page.getByTestId("add-text").click();
+  expect((await front(page)).length).toBe(1);
+
+  await page.getByTestId("clear-design").click();
+  expect((await front(page)).length).toBe(0);
+
+  await page.reload();
+  await expect(page.getByTestId("studio-heading")).toBeVisible();
+  expect((await front(page)).length).toBe(0);
+});

@@ -151,6 +151,12 @@ export default function Studio({
     setSelectedId(null);
   }
 
+  function clearDesign() {
+    setDesign({ front: [], back: [] });
+    setSelectedId(null);
+    setAdded(false);
+  }
+
   function onAddToCart() {
     if (!canAdd) return;
     addToCart({
@@ -409,6 +415,17 @@ export default function Studio({
             className="h-11 rounded-full border border-line bg-white px-6 text-sm text-muted"
           >
             Remove
+          </button>
+        )}
+
+        {totalElements > 0 && (
+          <button
+            type="button"
+            data-testid="clear-design"
+            onClick={clearDesign}
+            className="h-11 rounded-full border border-line bg-white px-6 text-sm text-muted"
+          >
+            Clear all
           </button>
         )}
       </div>
