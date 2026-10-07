@@ -178,6 +178,14 @@ export default function Studio({
     setAdded(false);
   }
 
+  function removeElement(id: string) {
+    setDesign((prev) => ({
+      ...prev,
+      [side]: prev[side].filter((e) => e.id !== id),
+    }));
+    if (selectedId === id) setSelectedId(null);
+  }
+
   function onAddToCart() {
     if (!canAdd) return;
     addToCart({
@@ -751,10 +759,31 @@ export default function Studio({
             Nothing on the {side} yet. Add text or upload artwork.
           </p>
         ) : (
-          <ul className="mt-3 flex flex-col gap-1 text-sm">
+          <ul className="mt-3 flex flex-col gap-2 text-sm">
             {elements.map((el) => (
-              <li key={el.id} data-testid={`element-${el.id}`}>
-                {el.kind === "text" ? `Text: ${el.content}` : "Artwork"}
+              <li
+                key={el.id}
+                data-testid={`element-${el.id}`}
+                className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2"
+              >
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(el.id)}
+                  aria-pressed={selectedId === el.id}
+                  className={`flex-1 text-left ${
+                    selectedId === el.id ? "text-accent" : ""
+                  }`}
+                >
+                  {el.kind === "text" ? `Text: ${el.content}` : "Artwork"}
+                </button>
+                <button
+                  type="button"
+                  data-testid={`delete-element-${el.id}`}
+                  onClick={() => removeElement(el.id)}
+                  className="text-muted underline"
+                >
+                  Delete
+                </button>
               </li>
             ))}
           </ul>

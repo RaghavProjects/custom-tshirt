@@ -131,3 +131,20 @@ test("Delete key removes the selected element", async ({ page }) => {
     .poll(async () => (await front(page)).length, { timeout: 3000 })
     .toBe(0);
 });
+
+test("each design list item has a working Delete button", async ({ page }) => {
+  await toStudio(page);
+  await page.getByTestId("add-text").click();
+  await page.getByTestId("add-text").click();
+  expect((await front(page)).length).toBe(2);
+
+  // delete the first listed element
+  const firstId = (await front(page))[0] as unknown as { id: string };
+  await page.getByTestId(`delete-element-${firstId.id}`).click();
+  await expect.poll(async () => (await front(page)).length).toBe(1);
+
+  // and the remaining one
+  const lastId = (await front(page))[0] as unknown as { id: string };
+  await page.getByTestId(`delete-element-${lastId.id}`).click();
+  await expect.poll(async () => (await front(page)).length).toBe(0);
+});
