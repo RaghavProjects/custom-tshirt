@@ -83,3 +83,34 @@ test("a generated image is added to the canvas", async ({ page }) => {
     })
     .toBe(1);
 });
+
+test("a saved design keeps front and back distinct", async ({ page }) => {
+  await toStudio(page);
+
+  // front gets text, back gets artwork (text is enough here)
+  await page.getByTestId("add-text").click();
+  await page.getByTestId("side-back").click();
+  await page.getByTestId("add-text").click();
+
+  await page.getByTestId("save-name").fill("Both sides");
+  await page.getByTestId("save-design").click();
+
+  const loadBtn = page.locator('[data-testid^="load-saved-"]').first();
+  const id = (await loadBtn.getAttribute("data-testid"))!.replace(
+    "load-saved-",
+    "",
+  );
+  const sides = page.getByTestId(`saved-sides-${id}`);
+  await expect(sides).toContainText("Front: 1 text");
+  await expect(sides).toContainText("Back: 1 text");
+
+  // clear, then load it back and confirm both sides returned
+  await page.getByTestId("clear-design").click();
+  await loadBtn.click();
+
+  const json = JSON.parse(
+    (await page.getByTestId("design-json").textContent()) ?? "{}",
+  ) as { front: unknown[]; back: unknown[] };
+  expect(json.front).toHaveLength(1);
+  expect(json.back).toHaveLength(1);
+});

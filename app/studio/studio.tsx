@@ -186,6 +186,16 @@ export default function Studio({
     if (selectedId === id) setSelectedId(null);
   }
 
+  function describeElements(els: DesignElement[]): string {
+    if (els.length === 0) return "empty";
+    const text = els.filter((e) => e.kind === "text").length;
+    const artwork = els.length - text;
+    const parts: string[] = [];
+    if (text) parts.push(`${text} text`);
+    if (artwork) parts.push(`${artwork} artwork`);
+    return parts.join(", ");
+  }
+
   function onAddToCart() {
     if (!canAdd) return;
     addToCart({
@@ -636,36 +646,46 @@ export default function Studio({
                   {saved.length > 0 && (
                     <ul className="flex flex-col gap-2 text-sm">
                       {saved.map((sd) => (
-                        <li
-                          key={sd.id}
-                          data-testid="saved-item"
-                          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line px-3 py-2"
-                        >
-                          <span>
-                            {sd.name}{" "}
-                            <span className="text-muted">
-                              · {sd.colorName} · {Object.keys(sd.sizeBreakdown).join("/")}
-                            </span>
-                          </span>
-                          <span className="flex gap-3">
-                            <button
-                              type="button"
-                              data-testid={`load-saved-${sd.id}`}
-                              onClick={() => loadSavedDesign(sd)}
-                              className="text-accent underline"
-                            >
-                              Load
-                            </button>
-                            <button
-                              type="button"
-                              data-testid={`delete-saved-${sd.id}`}
-                              onClick={() => setSaved(deleteSaved(sd.id))}
-                              className="text-muted underline"
-                            >
-                              Delete
-                            </button>
-                          </span>
-                        </li>
+                <li
+                  key={sd.id}
+                  data-testid="saved-item"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line px-3 py-2"
+                >
+                  <span className="flex flex-col">
+                    <span>
+                      {sd.name}{" "}
+                      <span className="text-muted">
+                        · {sd.colorName} ·{" "}
+                        {Object.keys(sd.sizeBreakdown).join("/")}
+                      </span>
+                    </span>
+                    <span
+                      data-testid={`saved-sides-${sd.id}`}
+                      className="text-xs text-muted"
+                    >
+                      Front: {describeElements(sd.design.front)} · Back:{" "}
+                      {describeElements(sd.design.back)}
+                    </span>
+                  </span>
+                  <span className="flex gap-3">
+                    <button
+                      type="button"
+                      data-testid={`load-saved-${sd.id}`}
+                      onClick={() => loadSavedDesign(sd)}
+                      className="text-accent underline"
+                    >
+                      Load
+                    </button>
+                    <button
+                      type="button"
+                      data-testid={`delete-saved-${sd.id}`}
+                      onClick={() => setSaved(deleteSaved(sd.id))}
+                      className="text-muted underline"
+                    >
+                      Delete
+                    </button>
+                  </span>
+                </li>
                       ))}
                     </ul>
                   )}
