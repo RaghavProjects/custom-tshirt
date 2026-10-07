@@ -110,6 +110,27 @@ export default function Studio({
     return () => ro.disconnect();
   }, []);
 
+  // Delete/Backspace removes the selected element (unless typing in a field).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t?.isContentEditable) {
+        return;
+      }
+      if (!selectedId) return;
+      e.preventDefault();
+      setDesign((prev) => ({
+        ...prev,
+        [side]: prev[side].filter((el) => el.id !== selectedId),
+      }));
+      setSelectedId(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedId, side]);
+
   const scale = Math.min(1, avail / STAGE_W);
   const elements = design[side];
   const selected = elements.find((e) => e.id === selectedId) ?? null;

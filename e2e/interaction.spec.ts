@@ -116,3 +116,18 @@ test("Clear all empties the canvas and it stays empty after reload", async ({
   await expect(page.getByTestId("studio-heading")).toBeVisible();
   expect((await front(page)).length).toBe(0);
 });
+
+test("Delete key removes the selected element", async ({ page }) => {
+  await toStudio(page);
+  await page.getByTestId("add-text").click();
+  const el = (await front(page)).find((e) => e.kind === "text")!;
+  const at = await geom(page);
+
+  await page.mouse.click(at(el.x + 55, el.y + 14).x, at(el.x + 55, el.y + 14).y);
+  await expect(page.getByTestId("remove-element")).toBeVisible();
+
+  await page.keyboard.press("Delete");
+  await expect
+    .poll(async () => (await front(page)).length, { timeout: 3000 })
+    .toBe(0);
+});
