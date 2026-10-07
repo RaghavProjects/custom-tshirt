@@ -51,10 +51,13 @@ requires admin `401`). Print file viewed: text + artwork on transparent bg.
 `307`→`/admin/login`; `/api/orders` empty `400`; `/studio` `200`;
 `/admin/login` `200`; `/api/upload` non-image `400`.
 
-**Phase 10 — optional:** PARTLY VERIFIED
-Saved designs (save/load/delete/persist) tested; AI generation returns `501
-"not configured"` honestly. **UNVERIFIED:** background removal end to end (WASM
-model not exercised); live AI provider path (no key).
+**Phase 10 — optional:** VERIFIED
+Saved designs (save/load/delete/persist) tested. Background removal verified end
+to end (`e2e/background-removal.spec.ts`: background transparent, `alpha.min=0`,
+subject retained). AI text-to-design verified against the live OpenAI API
+(`scripts/phase10-ai-check.mjs`: `201`, real 1024×1024 PNG served through the
+artwork proxy); the studio UI is covered by mocked e2e tests so the suite does
+not depend on a key or spend money.
 
 ## What broke and how I fixed it
 
@@ -88,14 +91,15 @@ model not exercised); live AI provider path (no key).
 | Forward-only status | phase7: skips `409`; chain `200`; events logged |
 | Print file has text + artwork | phase8: crops + viewed PNG |
 | Live deploy works | Phase 9 curls above |
-| Background removal works | **UNVERIFIED** |
-| Live AI generation works | **UNVERIFIED** (no key) |
+| Background removal works | `e2e/background-removal.spec.ts` (alpha.min=0, subject retained) |
+| Live AI generation works | `scripts/phase10-ai-check.mjs` (201, real 1024×1024 PNG) |
 | Embroidery format correct | **UNVERIFIED** (owner value missing) |
 
 ## What I would tell the next person
 
-1. **Prices and bulk tiers are unset**, so ordering returns `409` — intentional.
-   Set them in the `settings` row to take real orders.
+1. **Prices**: a working default is set (all tees ₹350, single tier) so orders
+   price and proceed; replace with Shankar's real figures/tiers. The app still
+   refuses to run without a configured price.
 2. **Payment is the sandbox adapter.** Wire Razorpay/Stripe behind
    `PaymentProvider` before taking money; the webhook signature + idempotency
    path is already correct.

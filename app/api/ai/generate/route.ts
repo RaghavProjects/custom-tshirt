@@ -5,12 +5,14 @@ import {
 } from "@/lib/imagegen";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
+const MAX_PROMPT = 1000;
+
 /**
- * Generate a design image from a text prompt.
+ * Generate a design image from a text prompt via OpenAI's image API.
  *
- * The live provider path is UNVERIFIED: no provider key is configured, so the
- * adapter has never been exercised. When no key is set this returns 501 with a
- * clear reason rather than pretending to work.
+ * Until a key is configured this returns 501 with a clear reason instead of
+ * pretending to work. The live provider path is exercised by
+ * scripts/phase10-ai-check.mjs once OPENAI_API_KEY is set.
  */
 export async function POST(request: NextRequest) {
   if (!isImageGenConfigured()) {
@@ -30,6 +32,15 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+  if (prompt.length > MAX_PROMPT) {
+    return NextResponse.json(
+      { error: `Prompt is too long (max ${MAX_PROMPT} characters).` },
+      { status: 400 },
+    );
+  }
+
+  // Trim and fall back: an empty or whitespace value must not be sent through.
+  const model = (process.env.OPENAI_IMAGE_MODEL ?? "").trim() || "gpt-image-1";
 
   try {
     const res = await fetch("https://api.openai.com/v1/images/generations", {
@@ -38,24 +49,34 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({
-        model: "gpt-image-1",
-        prompt,
-        size: "1024x1024",
-        n: 1,
-      }),
+      body: JSON.stringify({ model, prompt, size: "1024x1024", n: 1 }),
     });
+
     if (!res.ok) {
+      const detail = await res.text().catch(() => "");
       return NextResponse.json(
-        { error: `Image provider responded ${res.status}` },
+        {
+          error: `Image provider responded ${res.status}.`,
+          detail: detail.slice(0, 300),
+        },
         { status: 502 },
       );
     }
+
     const data = (await res.json()) as {
-      data?: { b64_json?: string }[];
+      data?: { b64_json?: string; url?: string }[];
     };
-    const b64 = data.data?.[0]?.b64_json;
-    if (!b64) {
+    const item = data.data?.[0];
+
+    let bytes: Buffer | null = null;
+    if (item?.b64_json) {
+      bytes = Buffer.from(item.b64_json, "base64");
+    } else if (item?.url) {
+      const imgRes = await fetch(item.url);
+      if (imgRes.ok) bytes = Buffer.from(await imgRes.arrayBuffer());
+    }
+
+    if (!bytes) {
       return NextResponse.json(
         { error: "Image provider returned no image." },
         { status: 502 },
@@ -65,13 +86,13 @@ export async function POST(request: NextRequest) {
     const path = `ai/${crypto.randomUUID()}.png`;
     const { error } = await supabaseAdmin()
       .storage.from("artwork")
-      .upload(path, Buffer.from(b64, "base64"), { contentType: "image/png" });
+      .upload(path, bytes, { contentType: "image/png" });
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const { data: pub } = supabaseAdmin().storage.from("artwork").getPublicUrl(path);
-    return NextResponse.json({ url: pub.publicUrl }, { status: 201 });
+    // Served through our own proxy, like every other artwork upload.
+    return NextResponse.json({ url: `/api/artwork/${path}`, path }, { status: 201 });
   } catch (err) {
     return NextResponse.json(
       { error: `Generation failed: ${(err as Error).message}` },
