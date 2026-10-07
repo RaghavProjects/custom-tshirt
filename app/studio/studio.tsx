@@ -346,453 +346,449 @@ export default function Studio({
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <section className="flex flex-wrap items-center gap-x-8 gap-y-4 rounded-2xl border border-line bg-white p-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs uppercase tracking-wide text-muted">
-            Colour
-          </span>
-          {colors.map((c) => (
-            <button
-              key={c.hex}
-              type="button"
-              data-testid={`studio-color-${c.hex}`}
-              aria-label={c.name}
-              aria-pressed={c.hex === colorHex}
-              onClick={() => setColorHex(c.hex)}
-              className={`flex h-9 w-9 items-center justify-center rounded-full border-2 ${
-                c.hex === colorHex ? "border-accent" : "border-line"
-              }`}
-            >
-              <span
-                className="h-6 w-6 rounded-full border border-line"
-                style={{ backgroundColor: c.hex }}
-              />
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs uppercase tracking-wide text-muted">Size</span>
-          {sizes.map((s) => (
-            <button
-              key={s}
-              type="button"
-              data-testid={`studio-size-${s}`}
-              aria-pressed={s === size}
-              onClick={() => setSize(s)}
-              className={`h-9 min-w-9 rounded-lg border px-3 text-sm ${
-                s === size ? "border-accent bg-accent text-white" : "border-line"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-full border border-line bg-white p-1">
-          {(["front", "back"] as Side[]).map((s) => (
-            <button
-              key={s}
-              type="button"
-              data-testid={`side-${s}`}
-              aria-pressed={side === s}
-              onClick={() => {
-                setSide(s);
-                setSelectedId(null);
-              }}
-              className={`h-9 rounded-full px-5 text-sm capitalize ${
-                side === s ? "bg-accent text-white" : "text-muted"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          data-testid="add-text"
-          onClick={addText}
-          className="h-11 rounded-full bg-accent px-6 text-sm font-medium text-white"
-        >
-          Add text
-        </button>
-
-        <label
-          aria-busy={busy}
-          className={`inline-flex h-11 cursor-pointer items-center rounded-full border border-line bg-white px-6 text-sm font-medium ${
-            busy ? "pointer-events-none opacity-60" : ""
-          }`}
-        >
-          {busy ? "Uploading…" : "Upload artwork"}
-          <input
-            type="file"
-            accept={artworkRules.acceptedTypes.join(",")}
-            data-testid="upload-input"
-            onChange={onUpload}
-            className="sr-only"
-          />
-        </label>
-
-        {selectedId && (
-          <button
-            type="button"
-            data-testid="remove-element"
-            onClick={removeSelected}
-            className="h-11 rounded-full border border-line bg-white px-6 text-sm text-muted"
-          >
-            Remove
-          </button>
-        )}
-
-        {totalElements > 0 && (
-          <button
-            type="button"
-            data-testid="clear-design"
-            onClick={clearDesign}
-            className="h-11 rounded-full border border-line bg-white px-6 text-sm text-muted"
-          >
-            Clear all
-          </button>
-        )}
-      </div>
-
-      {selected?.kind === "text" && (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white p-4">
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            Text
-            <input
-              data-testid="text-content"
-              value={selected.content}
-              onChange={(e) =>
-                updateElement(selected.id, { content: e.target.value })
-              }
-              className="h-10 w-56 rounded-lg border border-line px-3 text-sm text-fg"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            Font
-            <select
-              data-testid="text-font"
-              value={selected.fontFamily}
-              onChange={(e) =>
-                updateElement(selected.id, { fontFamily: e.target.value })
-              }
-              className="h-10 rounded-lg border border-line px-3 text-sm text-fg"
-            >
-              {TEXT_FONTS.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            Size
-            <input
-              type="number"
-              min={10}
-              max={120}
-              data-testid="text-size"
-              value={selected.fontSize}
-              onChange={(e) =>
-                updateElement(selected.id, {
-                  fontSize: Number(e.target.value) || 10,
-                })
-              }
-              className="h-10 w-20 rounded-lg border border-line px-3 text-sm text-fg"
-            />
-          </label>
-          <div className="flex flex-col gap-1 text-xs text-muted">
-            Colour
-            <div className="flex gap-2">
-              {TEXT_COLORS.map((c) => (
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_520px]">
+      <div className="flex flex-col gap-6">
+          <section className="flex flex-wrap items-center gap-x-8 gap-y-4 rounded-2xl border border-line bg-white p-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase tracking-wide text-muted">
+                Colour
+              </span>
+              {colors.map((c) => (
                 <button
-                  key={c}
+                  key={c.hex}
                   type="button"
-                  aria-label={`Text colour ${c}`}
-                  aria-pressed={selected.fill === c}
-                  onClick={() => updateElement(selected.id, { fill: c })}
-                  className={`h-8 w-8 rounded-full border-2 ${
-                    selected.fill === c ? "border-accent" : "border-line"
+                  data-testid={`studio-color-${c.hex}`}
+                  aria-label={c.name}
+                  aria-pressed={c.hex === colorHex}
+                  onClick={() => setColorHex(c.hex)}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full border-2 ${
+                    c.hex === colorHex ? "border-accent" : "border-line"
                   }`}
-                  style={{ backgroundColor: c }}
-                />
+                >
+                  <span
+                    className="h-6 w-6 rounded-full border border-line"
+                    style={{ backgroundColor: c.hex }}
+                  />
+                </button>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <p
-          data-testid="studio-error"
-          className="rounded-lg bg-white px-4 py-3 text-sm text-accent"
-        >
-          {error}
-        </p>
-      )}
-
-      <div ref={wrapRef} className="w-full">
-        <div
-          className="mx-auto"
-          style={{ width: Math.round(STAGE_W * scale) }}
-        >
-          <Canvas
-            width={STAGE_W}
-            height={STAGE_H}
-            scale={scale}
-            shirtColor={colorHex}
-            printArea={printArea}
-            elements={elements}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onChange={updateElement}
-          />
-        </div>
-      </div>
-
-      {printAreaIsPlaceholder && (
-        <p className="text-xs text-muted">
-          Print area and artwork limits are placeholders until Shankar supplies
-          them.
-        </p>
-      )}
-
-      <section className="flex flex-wrap items-end gap-6 rounded-2xl border border-line bg-white p-4">
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          Print method
-          <select
-            data-testid="print-method"
-            value={printMethod}
-            onChange={(e) => setPrintMethod(e.target.value as PrintMethod)}
-            className="h-10 rounded-lg border border-line px-3 text-sm capitalize text-fg"
-          >
-            {PRINT_METHODS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            data-testid="bulk-toggle"
-            checked={bulk}
-            onChange={(e) => setBulk(e.target.checked)}
-          />
-          Bulk (quantity per size)
-        </label>
-
-        {!bulk ? (
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            Quantity
-            <input
-              type="number"
-              min={1}
-              data-testid="quantity"
-              value={qty}
-              onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
-              className="h-10 w-20 rounded-lg border border-line px-3 text-sm text-fg"
-            />
-          </label>
-        ) : (
-          <div className="flex flex-wrap items-end gap-2">
-            {sizes.map((s) => (
-              <label key={s} className="flex flex-col gap-1 text-xs text-muted">
-                {s}
-                <input
-                  type="number"
-                  min={0}
-                  data-testid={`bulk-${s}`}
-                  value={bulkQty[s] ?? 0}
-                  onChange={(e) =>
-                    setBulkQty((prev) => ({
-                      ...prev,
-                      [s]: Math.max(0, Number(e.target.value) || 0),
-                    }))
-                  }
-                  className="h-10 w-16 rounded-lg border border-line px-3 text-sm text-fg"
-                />
-              </label>
-            ))}
-          </div>
-        )}
-
-        <span className="text-sm text-muted" data-testid="quantity-total">
-          Total: {quantity}
-        </span>
-
-        <button
-          type="button"
-          data-testid="add-to-cart"
-          onClick={onAddToCart}
-          disabled={!canAdd}
-          className="h-11 rounded-full bg-accent px-6 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Add to cart
-        </button>
-
-        {added && (
-          <Link href="/cart" className="text-sm text-accent underline">
-            View cart
-          </Link>
-        )}
-
-        {totalElements === 0 && (
-          <p className="text-sm text-muted">
-            Add text or artwork before adding to cart.
-          </p>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-6 rounded-2xl border border-line bg-white p-4">
-        <div className="flex flex-col gap-3">
-          <h2 className="font-display text-lg">Save & reuse</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase tracking-wide text-muted">Size</span>
+              {sizes.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  data-testid={`studio-size-${s}`}
+                  aria-pressed={s === size}
+                  onClick={() => setSize(s)}
+                  className={`h-9 min-w-9 rounded-lg border px-3 text-sm ${
+                    s === size ? "border-accent bg-accent text-white" : "border-line"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </section>
           <div className="flex flex-wrap items-center gap-3">
-            <input
-              data-testid="save-name"
-              value={saveName}
-              placeholder="Name this design"
-              onChange={(e) => setSaveName(e.target.value)}
-              className="h-10 w-56 rounded-lg border border-line px-3 text-sm"
-            />
+            <div className="inline-flex rounded-full border border-line bg-white p-1">
+              {(["front", "back"] as Side[]).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  data-testid={`side-${s}`}
+                  aria-pressed={side === s}
+                  onClick={() => {
+                    setSide(s);
+                    setSelectedId(null);
+                  }}
+                  className={`h-9 rounded-full px-5 text-sm capitalize ${
+                    side === s ? "bg-accent text-white" : "text-muted"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
             <button
               type="button"
-              data-testid="save-design"
-              onClick={saveCurrent}
-              className="h-10 rounded-full border border-line px-5 text-sm"
+              data-testid="add-text"
+              onClick={addText}
+              className="h-11 rounded-full bg-accent px-6 text-sm font-medium text-white"
             >
-              Save design
+              Add text
             </button>
+
+            <label
+              aria-busy={busy}
+              className={`inline-flex h-11 cursor-pointer items-center rounded-full border border-line bg-white px-6 text-sm font-medium ${
+                busy ? "pointer-events-none opacity-60" : ""
+              }`}
+            >
+              {busy ? "Uploading…" : "Upload artwork"}
+              <input
+                type="file"
+                accept={artworkRules.acceptedTypes.join(",")}
+                data-testid="upload-input"
+                onChange={onUpload}
+                className="sr-only"
+              />
+            </label>
+
+            {selectedId && (
+              <button
+                type="button"
+                data-testid="remove-element"
+                onClick={removeSelected}
+                className="h-11 rounded-full border border-line bg-white px-6 text-sm text-muted"
+              >
+                Remove
+              </button>
+            )}
+
+            {totalElements > 0 && (
+              <button
+                type="button"
+                data-testid="clear-design"
+                onClick={clearDesign}
+                className="h-11 rounded-full border border-line bg-white px-6 text-sm text-muted"
+              >
+                Clear all
+              </button>
+            )}
           </div>
-          {saved.length > 0 && (
-            <ul className="flex flex-col gap-2 text-sm">
-              {saved.map((sd) => (
-                <li
-                  key={sd.id}
-                  data-testid="saved-item"
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line px-3 py-2"
+          {selected?.kind === "text" && (
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white p-4">
+              <label className="flex flex-col gap-1 text-xs text-muted">
+                Text
+                <input
+                  data-testid="text-content"
+                  value={selected.content}
+                  onChange={(e) =>
+                    updateElement(selected.id, { content: e.target.value })
+                  }
+                  className="h-10 w-56 rounded-lg border border-line px-3 text-sm text-fg"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-muted">
+                Font
+                <select
+                  data-testid="text-font"
+                  value={selected.fontFamily}
+                  onChange={(e) =>
+                    updateElement(selected.id, { fontFamily: e.target.value })
+                  }
+                  className="h-10 rounded-lg border border-line px-3 text-sm text-fg"
                 >
-                  <span>
-                    {sd.name}{" "}
-                    <span className="text-muted">
-                      · {sd.colorName} · {Object.keys(sd.sizeBreakdown).join("/")}
-                    </span>
-                  </span>
-                  <span className="flex gap-3">
+                  {TEXT_FONTS.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-muted">
+                Size
+                <input
+                  type="number"
+                  min={10}
+                  max={120}
+                  data-testid="text-size"
+                  value={selected.fontSize}
+                  onChange={(e) =>
+                    updateElement(selected.id, {
+                      fontSize: Number(e.target.value) || 10,
+                    })
+                  }
+                  className="h-10 w-20 rounded-lg border border-line px-3 text-sm text-fg"
+                />
+              </label>
+              <div className="flex flex-col gap-1 text-xs text-muted">
+                Colour
+                <div className="flex gap-2">
+                  {TEXT_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-label={`Text colour ${c}`}
+                      aria-pressed={selected.fill === c}
+                      onClick={() => updateElement(selected.id, { fill: c })}
+                      className={`h-8 w-8 rounded-full border-2 ${
+                        selected.fill === c ? "border-accent" : "border-line"
+                      }`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {error && (
+            <p
+              data-testid="studio-error"
+              className="rounded-lg bg-white px-4 py-3 text-sm text-accent"
+            >
+              {error}
+            </p>
+          )}
+      <section className="rounded-2xl border border-line bg-white p-4">
+                <div className="flex flex-col gap-3 border-t border-line pt-4">
+                  <h2 className="font-display text-lg">AI tools</h2>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      data-testid="ai-prompt"
+                      value={aiPrompt}
+                      placeholder="Describe a design"
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      className="h-10 w-64 rounded-lg border border-line px-3 text-sm"
+                    />
                     <button
                       type="button"
-                      data-testid={`load-saved-${sd.id}`}
-                      onClick={() => loadSavedDesign(sd)}
-                      className="text-accent underline"
+                      data-testid="ai-generate"
+                      onClick={generate}
+                      disabled={aiBusy || aiPrompt.trim().length < 3}
+                      className="h-10 rounded-full border border-line px-5 text-sm disabled:opacity-40"
                     >
-                      Load
+                      {aiBusy ? "Generating…" : "Generate design"}
+                    </button>
+                    {selected?.kind === "image" && (
+                      <button
+                        type="button"
+                        data-testid="remove-bg"
+                        onClick={removeBg}
+                        disabled={bgBusy}
+                        className="h-10 rounded-full border border-line px-5 text-sm disabled:opacity-40"
+                      >
+                        {bgBusy ? "Removing…" : "Remove background"}
+                      </button>
+                    )}
+                  </div>
+                  {aiNotice && (
+                    <p data-testid="ai-notice" className="text-sm text-muted">
+                      {aiNotice}
+                    </p>
+                  )}
+                </div>
+      </section>
+          <section
+            aria-label="Design elements"
+            className="rounded-2xl border border-line bg-white p-4"
+          >
+            <h2 className="font-display text-lg">
+              {side} · {productName} · {color?.name ?? colorHex} · size {size}
+            </h2>
+            {elements.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">
+                Nothing on the {side} yet. Add text or upload artwork.
+              </p>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-2 text-sm">
+                {elements.map((el) => (
+                  <li
+                    key={el.id}
+                    data-testid={`element-${el.id}`}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(el.id)}
+                      aria-pressed={selectedId === el.id}
+                      className={`flex-1 text-left ${
+                        selectedId === el.id ? "text-accent" : ""
+                      }`}
+                    >
+                      {el.kind === "text" ? `Text: ${el.content}` : "Artwork"}
                     </button>
                     <button
                       type="button"
-                      data-testid={`delete-saved-${sd.id}`}
-                      onClick={() => setSaved(deleteSaved(sd.id))}
+                      data-testid={`delete-element-${el.id}`}
+                      onClick={() => removeElement(el.id)}
                       className="text-muted underline"
                     >
                       Delete
                     </button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+      <section className="rounded-2xl border border-line bg-white p-4">
+                <div className="flex flex-col gap-3">
+                  <h2 className="font-display text-lg">Save & reuse</h2>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      data-testid="save-name"
+                      value={saveName}
+                      placeholder="Name this design"
+                      onChange={(e) => setSaveName(e.target.value)}
+                      className="h-10 w-56 rounded-lg border border-line px-3 text-sm"
+                    />
+                    <button
+                      type="button"
+                      data-testid="save-design"
+                      onClick={saveCurrent}
+                      className="h-10 rounded-full border border-line px-5 text-sm"
+                    >
+                      Save design
+                    </button>
+                  </div>
+                  {saved.length > 0 && (
+                    <ul className="flex flex-col gap-2 text-sm">
+                      {saved.map((sd) => (
+                        <li
+                          key={sd.id}
+                          data-testid="saved-item"
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line px-3 py-2"
+                        >
+                          <span>
+                            {sd.name}{" "}
+                            <span className="text-muted">
+                              · {sd.colorName} · {Object.keys(sd.sizeBreakdown).join("/")}
+                            </span>
+                          </span>
+                          <span className="flex gap-3">
+                            <button
+                              type="button"
+                              data-testid={`load-saved-${sd.id}`}
+                              onClick={() => loadSavedDesign(sd)}
+                              className="text-accent underline"
+                            >
+                              Load
+                            </button>
+                            <button
+                              type="button"
+                              data-testid={`delete-saved-${sd.id}`}
+                              onClick={() => setSaved(deleteSaved(sd.id))}
+                              className="text-muted underline"
+                            >
+                              Delete
+                            </button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+      </section>
+          <section className="flex flex-wrap items-end gap-6 rounded-2xl border border-line bg-white p-4">
+            <label className="flex flex-col gap-1 text-xs text-muted">
+              Print method
+              <select
+                data-testid="print-method"
+                value={printMethod}
+                onChange={(e) => setPrintMethod(e.target.value as PrintMethod)}
+                className="h-10 rounded-lg border border-line px-3 text-sm capitalize text-fg"
+              >
+                {PRINT_METHODS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <div className="flex flex-col gap-3 border-t border-line pt-4">
-          <h2 className="font-display text-lg">AI tools</h2>
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              data-testid="ai-prompt"
-              value={aiPrompt}
-              placeholder="Describe a design"
-              onChange={(e) => setAiPrompt(e.target.value)}
-              className="h-10 w-64 rounded-lg border border-line px-3 text-sm"
-            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                data-testid="bulk-toggle"
+                checked={bulk}
+                onChange={(e) => setBulk(e.target.checked)}
+              />
+              Bulk (quantity per size)
+            </label>
+
+            {!bulk ? (
+              <label className="flex flex-col gap-1 text-xs text-muted">
+                Quantity
+                <input
+                  type="number"
+                  min={1}
+                  data-testid="quantity"
+                  value={qty}
+                  onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+                  className="h-10 w-20 rounded-lg border border-line px-3 text-sm text-fg"
+                />
+              </label>
+            ) : (
+              <div className="flex flex-wrap items-end gap-2">
+                {sizes.map((s) => (
+                  <label key={s} className="flex flex-col gap-1 text-xs text-muted">
+                    {s}
+                    <input
+                      type="number"
+                      min={0}
+                      data-testid={`bulk-${s}`}
+                      value={bulkQty[s] ?? 0}
+                      onChange={(e) =>
+                        setBulkQty((prev) => ({
+                          ...prev,
+                          [s]: Math.max(0, Number(e.target.value) || 0),
+                        }))
+                      }
+                      className="h-10 w-16 rounded-lg border border-line px-3 text-sm text-fg"
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <span className="text-sm text-muted" data-testid="quantity-total">
+              Total: {quantity}
+            </span>
+
             <button
               type="button"
-              data-testid="ai-generate"
-              onClick={generate}
-              disabled={aiBusy || aiPrompt.trim().length < 3}
-              className="h-10 rounded-full border border-line px-5 text-sm disabled:opacity-40"
+              data-testid="add-to-cart"
+              onClick={onAddToCart}
+              disabled={!canAdd}
+              className="h-11 rounded-full bg-accent px-6 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {aiBusy ? "Generating…" : "Generate design"}
+              Add to cart
             </button>
-            {selected?.kind === "image" && (
-              <button
-                type="button"
-                data-testid="remove-bg"
-                onClick={removeBg}
-                disabled={bgBusy}
-                className="h-10 rounded-full border border-line px-5 text-sm disabled:opacity-40"
-              >
-                {bgBusy ? "Removing…" : "Remove background"}
-              </button>
+
+            {added && (
+              <Link href="/cart" className="text-sm text-accent underline">
+                View cart
+              </Link>
             )}
-          </div>
-          {aiNotice && (
-            <p data-testid="ai-notice" className="text-sm text-muted">
-              {aiNotice}
-            </p>
-          )}
-        </div>
-      </section>
 
-      <section
-        aria-label="Design elements"
-        className="rounded-2xl border border-line bg-white p-4"
-      >
-        <h2 className="font-display text-lg">
-          {side} · {productName} · {color?.name ?? colorHex} · size {size}
-        </h2>
-        {elements.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">
-            Nothing on the {side} yet. Add text or upload artwork.
-          </p>
-        ) : (
-          <ul className="mt-3 flex flex-col gap-2 text-sm">
-            {elements.map((el) => (
-              <li
-                key={el.id}
-                data-testid={`element-${el.id}`}
-                className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2"
-              >
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(el.id)}
-                  aria-pressed={selectedId === el.id}
-                  className={`flex-1 text-left ${
-                    selectedId === el.id ? "text-accent" : ""
-                  }`}
+            {totalElements === 0 && (
+              <p className="text-sm text-muted">
+                Add text or artwork before adding to cart.
+              </p>
+            )}
+          </section>
+      </div>
+      <div className="h-fit lg:sticky lg:top-6">
+              <div ref={wrapRef} className="w-full">
+                <div
+                  className="mx-auto"
+                  style={{ width: Math.round(STAGE_W * scale) }}
                 >
-                  {el.kind === "text" ? `Text: ${el.content}` : "Artwork"}
-                </button>
-                <button
-                  type="button"
-                  data-testid={`delete-element-${el.id}`}
-                  onClick={() => removeElement(el.id)}
-                  className="text-muted underline"
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <pre data-testid="design-json" className="sr-only">
-        {JSON.stringify(design)}
-      </pre>
+                  <Canvas
+                    width={STAGE_W}
+                    height={STAGE_H}
+                    scale={scale}
+                    shirtColor={colorHex}
+                    printArea={printArea}
+                    elements={elements}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    onChange={updateElement}
+                  />
+                </div>
+              </div>
+              {printAreaIsPlaceholder && (
+                <p className="text-xs text-muted">
+                  Print area and artwork limits are placeholders until Shankar supplies
+                  them.
+                </p>
+              )}
+      </div>
+          <pre data-testid="design-json" className="sr-only">
+            {JSON.stringify(design)}
+          </pre>
     </div>
   );
 }
